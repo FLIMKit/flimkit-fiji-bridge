@@ -1,14 +1,8 @@
 # Contributing
 
-This file is part of the template. Rewrite it for your own add-on, or delete it if you are not taking contributions.
+Thanks for your interest in the FLIMKit Fiji bridge. Bug reports and pull requests are welcome.
 
-Below is a starting point, adapted from [FLIMKit's own CONTRIBUTING.md](https://github.com/FLIMKit/FLIMKit/blob/main/CONTRIBUTING.md).
-
----
-
-Thanks for your interest in this add-on. Bug reports and pull requests are welcome.
-
-This add-on is maintained by `<your name>`. It is MIT licensed, so contributions are accepted under the same terms.
+This add-on is maintained by the FLIMKit contributors. It is MIT licensed, so contributions are accepted under the same terms.
 
 ## Reporting bugs
 
@@ -28,7 +22,7 @@ pip install -e '.[test]'
 pytest -q
 ```
 
-The tests check that the add-on registers and that its entry point resolves. Add a test for any bug you fix or hook you add.
+The tests check plugin registration, the local protocol, exact TIFF transfer, GeoJSON receipt, and the optional live Fiji process. Add a test for any bug you fix or behavior you add.
 
 FLIMKit itself is needed to import the add-on. Install it from source, or with `pip install --no-deps 'flimkit @ git+https://github.com/FLIMKit/FLIMKit'` if you only need the plugin machinery rather than the full analysis stack.
 

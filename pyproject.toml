@@ -3,33 +3,38 @@ requires = ['setuptools>=68']
 build-backend = 'setuptools.build_meta'
 
 [project]
-name = 'flimkit-plugin-template'
+name = 'flimkit-fiji-bridge'
 version = '0.1.0'
-description = 'A starting point for a FLIMKit add-on'
+description = 'Direct image and ROI exchange between FLIMKit and Fiji'
 readme = 'README.md'
 requires-python = '>=3.12'
 license = 'MIT'
 license-files = ['LICENSE.md']
 authors = [
-    {name = 'Your Name', email = 'you@example.org'},
+    {name = 'Zhen Yuan Yeo', email = '12291964+zhenyuan992@users.noreply.github.com'},
 ]
-keywords = ['FLIM', 'FLIMKit', 'plugin']
+keywords = ['FLIM', 'FLIMKit', 'Fiji', 'ImageJ', 'plugin']
 classifiers = [
     'Development Status :: 3 - Alpha',
     'Intended Audience :: Science/Research',
     'Programming Language :: Python :: 3',
     'Topic :: Scientific/Engineering :: Bio-Informatics',
 ]
-dependencies = []
+dependencies = [
+    'numpy==2.4.2',
+    'tifffile>=2021.7.2',
+]
 
 [project.optional-dependencies]
-test = ['pytest']
+test = ['pytest==9.0.2']
 
 [project.urls]
+Repository = 'https://github.com/FLIMKit/flimkit-fiji-bridge'
+Issues = 'https://github.com/FLIMKit/flimkit-fiji-bridge/issues'
 FLIMKit = 'https://github.com/FLIMKit/FLIMKit'
 
 [project.entry-points.'flimkit.plugins']
-plugin_template = 'flimkit_plugin_template'
+fiji_bridge = 'flimkit_fiji_bridge'
 
 [tool.setuptools.packages.find]
-include = ['flimkit_plugin_template*']
+include = ['flimkit_fiji_bridge*']

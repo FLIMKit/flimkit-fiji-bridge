@@ -1,15 +1,15 @@
 from importlib.metadata import entry_points
 
-import flimkit_plugin_template
+import flimkit_fiji_bridge
 from flimkit import plugins
 
 
 def test_api_version_matches():
-    assert flimkit_plugin_template.FLIMKIT_PLUGIN_API == plugins.API_VERSION
+    assert flimkit_fiji_bridge.FLIMKIT_PLUGIN_API == plugins.API_VERSION
 
 
 def test_tool_is_registered():
-    found = plugins.get_tool('plugin_template_hello')
+    found = plugins.get_tool('fiji_bridge_open')
     assert found is not None
     assert found.menu_path == ('Tools',)
     assert callable(found.callback)
@@ -17,4 +17,4 @@ def test_tool_is_registered():
 
 def test_entry_point_is_declared():
     names = [e.name for e in entry_points(group='flimkit.plugins')]
-    assert 'plugin_template' in names
+    assert 'fiji_bridge' in names
