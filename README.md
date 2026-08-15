@@ -6,20 +6,20 @@ Direct image and ROI exchange between [FLIMKit](https://github.com/FLIMKit/FLIMK
 
 ## Current status
 
-This repository currently contains the initial direct-communication implementation. It is not yet the finished interactive plugin.
+This add-on connects the bridge server to FLIMKit's public image and ROI bindings on `main`.
 
-The current tests prove that Fiji can:
+From FLIMKit, `Tools > Fiji Bridge...` now starts an authenticated loopback server and shows its address and pairing token. The server can:
 
-1. fetch synthetic intensity and lifetime images from Python as `float32` TIFF;
-2. preserve the image shape and pixel values;
-3. send a named polygon ROI back to Python as GeoJSON.
+1. fetch copies of the current fitted intensity and lifetime images as `float32` TIFF, with pixel-value units (`photons` or `ns`);
+2. export the current FLIMKit Regions table as GeoJSON;
+3. import a Fiji GeoJSON `FeatureCollection` into the current FLIMKit Regions table.
 
-Communication stays on `127.0.0.1` and requires a bearer token. The user does not manually save or reopen the transferred TIFF or GeoJSON data.
+Communication stays on `127.0.0.1`. Image and ROI endpoints require the generated bearer token. The status endpoint is unauthenticated and reports only the protocol name and version. The server refuses non-loopback binding. The current Fiji script remains a headless transport check; a normal Fiji ROI Manager interface is still future work.
 
 ## Requirements
 
 - Python 3.12 or newer, matching FLIMKit's requirement.
-- FLIMKit 0.10.0 or newer.
+- A FLIMKit build containing the public image and ROI bindings merged in [FLIMKit PR #52](https://github.com/FLIMKit/FLIMKit/pull/52).
 - A working Fiji installation.
 - `pytest`, NumPy, and tifffile for the bridge tests.
 
@@ -39,7 +39,7 @@ python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
 python -m pip install --no-deps \
-  'flimkit @ git+https://github.com/FLIMKit/FLIMKit'
+  'flimkit @ git+https://github.com/FLIMKit/FLIMKit.git@main'
 python -m pip install -e '.[test]'
 ```
 
@@ -53,7 +53,7 @@ python -m pytest -q
 Expected result:
 
 ```text
-12 passed
+26 passed
 ```
 
 The test is headless, so Fiji does not open a visible image window. Success means a real Fiji process fetched both TIFF images, checked their values, and sent the GeoJSON ROI back to Python.
@@ -104,16 +104,19 @@ Fiji Bridge requires Java 8 or newer. Please download a current Fiji release wit
 
 ## What the current bridge runs
 
-The Python side exposes four local endpoints:
+The Python side exposes five local endpoints:
 
 | Method | Path | Purpose |
 |---|---|---|
 | `GET` | `/v1/status` | Report protocol version |
-| `GET` | `/v1/images/intensity.tif` | Return the intensity image |
-| `GET` | `/v1/images/lifetime.tif` | Return the lifetime image |
-| `POST` | `/v1/rois` | Receive a GeoJSON `FeatureCollection` |
+| `GET` | `/v1/images/intensity.tif` | Return the current FLIMKit intensity image |
+| `GET` | `/v1/images/lifetime.tif` | Return the current FLIMKit lifetime image |
+| `GET` | `/v1/rois` | Export the current FLIMKit ROIs as GeoJSON |
+| `POST` | `/v1/rois` | Import a GeoJSON `FeatureCollection` into FLIMKit |
 
-Image IDs are resolved through an explicit dictionary. URL values are never passed to `getattr`.
+Image IDs use an explicit allowlist. URL values are never passed to `getattr`. Each TIFF response includes `X-FLIMKit-Value-Unit`; Fiji stores that value in the image calibration. The production data source calls `get_current_images(app)`, `export_rois_geojson(app)`, and `import_rois_geojson(app, payload)` from `flimkit.plugins`.
+
+The image scope is fitted lifetime and photon-count intensity only. Raw per-pixel decay histograms are not transferred. A raw-decay binding would need a separate data and metadata contract.
 
 The Fiji script is:
 
@@ -141,22 +144,18 @@ The live test skips unless `FIJI_PATH` is set.
 
 The bridge does not yet:
 
-- read FLIMKit's current intensity or lifetime images;
-- use FLIMKit's real ROI manager;
 - use Fiji's ROI Manager;
-- open an interactive bridge window;
+- provide normal Fiji buttons for fetching images and sending or receiving ROIs;
 - perform image registration;
 - define the final production protocol.
 
-Registration will remain a Fiji-side operation. The planned bridge will reject mismatched image dimensions rather than silently rescale ROI coordinates.
+Registration will remain a Fiji-side operation. The planned Fiji interface will reject mismatched image dimensions rather than silently rescale ROI coordinates.
 
 ## Next implementation steps
 
-1. Fix and test FLIMKit's GeoJSON ROI round trip.
-2. Add stable FLIMKit plugin bindings for current intensity, lifetime, and ROI data.
-3. Turn the current script into a small Fiji command with a normal user interface.
-4. Add bidirectional Fiji ROI Manager conversion.
-5. Test registered ROI transfer with Fiji's existing registration tools.
+1. Turn the current Fiji script into a small command with a normal user interface.
+2. Add bidirectional Fiji ROI Manager conversion.
+3. Test registered ROI transfer with Fiji's existing registration tools.
 
 ## Development
 
