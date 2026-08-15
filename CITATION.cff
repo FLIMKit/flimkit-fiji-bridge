@@ -1,0 +1,23 @@
+cff-version: 1.2.0
+message: "If you use flimkit-fiji-bridge, please cite it using the metadata below."
+title: "flimkit-fiji-bridge: direct image and ROI exchange between FLIMKit and Fiji"
+authors:
+  - family-names: Yeo
+    given-names: Zhen Yuan
+    affiliation: "Department of Statistics and Data Science, National University of Singapore, Singapore"
+    orcid: "https://orcid.org/0000-0003-2766-6972"
+  - family-names: Hunt
+    given-names: Alexander
+    affiliation: "Centre for Inflammation Research, Institute for Regeneration and Repair, University of Edinburgh, Edinburgh, UK"
+    orcid: "https://orcid.org/0009-0006-2990-649X"
+type: software
+license: MIT
+version: 0.1.0
+date-released: 2026-08-15
+repository-code: "https://github.com/FLIMKit/flimkit-fiji-bridge"
+keywords:
+  - FLIM
+  - FLIMKit
+  - Fiji
+  - ImageJ
+  - plugin
