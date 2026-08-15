@@ -14,6 +14,11 @@ type: software
 license: MIT
 version: 0.1.0
 date-released: 2026-08-15
+doi: 10.5281/zenodo.21951612
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.21951613
+    description: "Archived release v0.1.0"
 repository-code: "https://github.com/FLIMKit/flimkit-fiji-bridge"
 keywords:
   - FLIM

@@ -1,5 +1,7 @@
 # FLIMKit Fiji bridge
 
+[![DOI](https://zenodo.org/badge/1334686126.svg)](https://doi.org/10.5281/zenodo.21951612)
+
 Direct image and ROI exchange between [FLIMKit](https://github.com/FLIMKit/FLIMKit) and [Fiji](https://fiji.sc/).
 
 ## Current status
