@@ -4,9 +4,9 @@ Direct image and ROI exchange between [FLIMKit](https://github.com/FLIMKit/FLIMK
 
 ## Current status
 
-This repository currently contains a tested direct-communication demo. It is not yet the finished interactive plugin.
+This repository currently contains the initial direct-communication implementation. It is not yet the finished interactive plugin.
 
-The demo proves that Fiji can:
+The current tests prove that Fiji can:
 
 1. fetch synthetic intensity and lifetime images from Python as `float32` TIFF;
 2. preserve the image shape and pixel values;
@@ -19,21 +19,19 @@ Communication stays on `127.0.0.1` and requires a bearer token. The user does no
 - Python 3.12 or newer, matching FLIMKit's requirement.
 - FLIMKit 0.10.0 or newer.
 - A working Fiji installation.
-- `pytest`, NumPy, and tifffile for the demo tests.
+- `pytest`, NumPy, and tifffile for the bridge tests.
 
-Use a recent Fiji download with its bundled JDK. The demo has been verified with bundled JDK 21 Fiji installations on Linux x86-64 and macOS ARM64.
+Use a recent Fiji download with its bundled JDK. The bridge tests have been verified with bundled JDK 21 Fiji installations on Linux x86-64 and macOS ARM64.
 
-The Fiji demo client uses `java.net.HttpURLConnection`, which is available on Java 8. It does not use the Java 11-only `java.net.http.HttpClient` API. An old Fiji installation may still fail before the bridge script starts if Fiji's own JAR files require a newer Java runtime.
+The Fiji bridge client uses `java.net.HttpURLConnection`, which is available on Java 8. It does not use the Java 11-only `java.net.http.HttpClient` API. An old Fiji installation may still fail before the bridge script starts if Fiji's own JAR files require a newer Java runtime.
 
-## Try the demo on macOS ARM64
+## Test the bridge on macOS ARM64
 
 Clone the repository and create a clean environment:
 
 ```bash
 git clone https://github.com/FLIMKit/flimkit-fiji-bridge.git
 cd flimkit-fiji-bridge
-
-git switch demo/direct-communication
 
 python3 -m venv .venv
 source .venv/bin/activate
@@ -102,7 +100,7 @@ If the bridge script starts with a Java runtime older than Java 8, it stops with
 Fiji Bridge requires Java 8 or newer. Please download a current Fiji release with its bundled JDK.
 ```
 
-## What the demo runs
+## What the current bridge runs
 
 The Python side exposes four local endpoints:
 
@@ -118,13 +116,13 @@ Image IDs are resolved through an explicit dictionary. URL values are never pass
 The Fiji script is:
 
 ```text
-fiji/FijiBridgeDemo.groovy
+fiji/FijiBridge.groovy
 ```
 
-The Python demo server is:
+The Python bridge server is:
 
 ```text
-flimkit_fiji_bridge/demo_server.py
+flimkit_fiji_bridge/server.py
 ```
 
 ## Run without Fiji
@@ -137,9 +135,9 @@ python -m pytest -q
 
 The live test skips unless `FIJI_PATH` is set.
 
-## Limits of this demo
+## Current limits
 
-The demo does not yet:
+The bridge does not yet:
 
 - read FLIMKit's current intensity or lifetime images;
 - use FLIMKit's real ROI manager;
@@ -154,7 +152,7 @@ Registration will remain a Fiji-side operation. The planned bridge will reject m
 
 1. Fix and test FLIMKit's GeoJSON ROI round trip.
 2. Add stable FLIMKit plugin bindings for current intensity, lifetime, and ROI data.
-3. Replace the demo script with a small Fiji command and normal user interface.
+3. Turn the current script into a small Fiji command with a normal user interface.
 4. Add bidirectional Fiji ROI Manager conversion.
 5. Test registered ROI transfer with Fiji's existing registration tools.
 

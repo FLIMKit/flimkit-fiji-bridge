@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 import tifffile
 
-from flimkit_fiji_bridge.demo_server import BridgeState, create_server
+from flimkit_fiji_bridge.server import BridgeState, create_server
 
 
 @pytest.fixture

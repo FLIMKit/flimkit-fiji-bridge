@@ -6,14 +6,14 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from flimkit_fiji_bridge.demo_server import BridgeState, create_server
+from flimkit_fiji_bridge.server import BridgeState, create_server
 
 
-SCRIPT = Path(__file__).parents[1] / 'fiji' / 'FijiBridgeDemo.groovy'
+SCRIPT = Path(__file__).parents[1] / 'fiji' / 'FijiBridge.groovy'
 
 
 @pytest.fixture
-def running_fiji_demo_server():
+def running_fiji_server():
     state = BridgeState(images={
         'intensity': np.arange(35, dtype=np.float32).reshape(5, 7),
         'lifetime': np.arange(35, dtype=np.float32).reshape(5, 7) / 10.0,
@@ -31,26 +31,26 @@ def running_fiji_demo_server():
         thread.join(timeout=5)
 
 
-def test_fiji_demo_uses_java_8_compatible_http_client():
+def test_fiji_bridge_uses_java_8_compatible_http_client():
     source = SCRIPT.read_text(encoding='utf-8')
 
     assert 'java.net.HttpURLConnection' in source
     assert 'java.net.http' not in source
 
 
-def test_fiji_demo_contains_clear_java_error():
+def test_fiji_bridge_contains_clear_java_error():
     source = SCRIPT.read_text(encoding='utf-8')
 
     assert 'Fiji Bridge requires Java 8 or newer' in source
     assert 'download a current Fiji release with its bundled JDK' in source
 
 
-def test_installed_fiji_fetches_images_and_posts_roi(running_fiji_demo_server):
+def test_installed_fiji_fetches_images_and_posts_roi(running_fiji_server):
     fiji_path = os.environ.get('FIJI_PATH')
     if not fiji_path:
-        pytest.skip('set FIJI_PATH to run the live Fiji demo test')
+        pytest.skip('set FIJI_PATH to run the live Fiji bridge test')
     assert fiji_path is not None
-    base_url, state = running_fiji_demo_server
+    base_url, state = running_fiji_server
 
     completed = subprocess.run(
         [

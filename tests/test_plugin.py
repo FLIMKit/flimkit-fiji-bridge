@@ -9,7 +9,7 @@ def test_api_version_matches():
 
 
 def test_tool_is_registered():
-    found = plugins.get_tool('fiji_bridge_demo')
+    found = plugins.get_tool('fiji_bridge_open')
     assert found is not None
     assert found.menu_path == ('Tools',)
     assert callable(found.callback)
