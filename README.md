@@ -14,7 +14,7 @@ From FLIMKit, `Tools > Fiji Bridge...` now starts an authenticated loopback serv
 2. export the current FLIMKit Regions table as GeoJSON;
 3. import a Fiji GeoJSON `FeatureCollection` into the current FLIMKit Regions table.
 
-Communication stays on `127.0.0.1`. Image and ROI endpoints require the generated bearer token. The status endpoint is unauthenticated and reports only the protocol name and version. The server refuses non-loopback binding. The current Fiji script remains a headless transport check; a normal Fiji ROI Manager interface is still future work.
+Communication stays on `127.0.0.1`. Image and ROI endpoints require the generated bearer token. The status endpoint is unauthenticated and reports only the protocol name and version. The server refuses non-loopback binding. Image reads use a 10-second timeout. ROI imports wait for FLIMKit to finish because the UI-thread mutation cannot be cancelled safely; this prevents a timeout from reporting failure while an import may still complete. The current Fiji script remains a headless transport check; a normal Fiji ROI Manager interface is still future work.
 
 ## Requirements
 
@@ -53,7 +53,7 @@ python -m pytest -q
 Expected result:
 
 ```text
-26 passed
+29 passed
 ```
 
 The test is headless, so Fiji does not open a visible image window. Success means a real Fiji process fetched both TIFF images, checked their values, and sent the GeoJSON ROI back to Python.
