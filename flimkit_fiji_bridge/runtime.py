@@ -1,11 +1,10 @@
-import ipaddress
 import secrets
 import threading
 from dataclasses import dataclass
 from typing import Callable, Optional
 
 from .flimkit_adapter import FlimkitDataSource
-from .server import BridgeDataSource, create_server
+from .server import BridgeDataSource, create_server, is_loopback_host
 
 
 @dataclass(frozen=True)
@@ -38,7 +37,7 @@ class BridgeRuntime:
         port: int = 0,
         token: Optional[str] = None,
     ) -> BridgeConnection:
-        if not _is_loopback(host):
+        if not is_loopback_host(host):
             raise ValueError('The Fiji bridge may bind only to a loopback address')
 
         with self._lock:
@@ -83,12 +82,3 @@ class BridgeRuntime:
             server.server_close()
         if thread is not None:
             thread.join(timeout=5)
-
-
-def _is_loopback(host: str) -> bool:
-    if host == 'localhost':
-        return True
-    try:
-        return ipaddress.ip_address(host).is_loopback
-    except ValueError:
-        return False

@@ -1,4 +1,5 @@
 import copy
+import ipaddress
 import json
 from dataclasses import dataclass, field
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -10,6 +11,15 @@ import tifffile
 
 
 _MAX_ROI_BYTES = 1_000_000
+
+
+def is_loopback_host(host: str) -> bool:
+    if host == 'localhost':
+        return True
+    try:
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return False
 
 
 class BridgeDataSource(Protocol):
@@ -54,6 +64,9 @@ def create_server(
     token: str,
     source: BridgeDataSource,
 ):
+    if not is_loopback_host(host):
+        raise ValueError('The Fiji bridge may bind only to a loopback address')
+
     class Handler(BaseHTTPRequestHandler):
         def _authorized(self):
             return self.headers.get('Authorization') == f'Bearer {token}'

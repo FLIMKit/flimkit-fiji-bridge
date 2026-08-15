@@ -11,6 +11,13 @@ import tifffile
 from flimkit_fiji_bridge.server import BridgeState, create_server
 
 
+def test_server_refuses_non_loopback_binding():
+    state = BridgeState(images={})
+
+    with pytest.raises(ValueError, match='loopback'):
+        create_server('0.0.0.0', 0, 'test-token', state)
+
+
 @pytest.fixture
 def running_server():
     state = BridgeState(images={
