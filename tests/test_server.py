@@ -107,5 +107,41 @@ def test_authenticated_geojson_roi_is_received_exactly(running_server):
         reply = json.load(response)
 
     assert response.status == 200
-    assert reply == {'received_features': 1}
+    assert reply == {
+        'received_features': 1,
+        'imported_region_ids': [0],
+    }
     assert state.received_rois == [payload]
+
+
+def test_authenticated_geojson_rois_are_exported(running_server):
+    base_url, state = running_server
+    payload = {
+        'type': 'FeatureCollection',
+        'features': [{
+            'type': 'Feature',
+            'properties': {'name': 'FLIMKit ROI'},
+            'geometry': {
+                'type': 'Polygon',
+                'coordinates': [[[1, 1], [4, 1], [2, 4], [1, 1]]],
+            },
+        }],
+    }
+    state.rois = payload
+    request = authorized_request(f'{base_url}/v1/rois')
+
+    with urlopen(request) as response:
+        received = json.load(response)
+
+    assert response.status == 200
+    assert response.headers['Content-Type'] == 'application/geo+json'
+    assert received == payload
+
+
+def test_roi_export_requires_pairing_token(running_server):
+    base_url, _ = running_server
+
+    with pytest.raises(HTTPError) as caught:
+        urlopen(f'{base_url}/v1/rois')
+
+    assert caught.value.code == 401
