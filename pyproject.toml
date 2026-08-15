@@ -12,6 +12,7 @@ license = 'MIT'
 license-files = ['LICENSE.md']
 authors = [
     {name = 'Zhen Yuan Yeo', email = '12291964+zhenyuan992@users.noreply.github.com'},
+    {name = 'Alex Hunt', email = 'alexander.hunt@ed.ac.uk'},
 ]
 keywords = ['FLIM', 'FLIMKit', 'Fiji', 'ImageJ', 'plugin']
 classifiers = [
