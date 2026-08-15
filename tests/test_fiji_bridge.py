@@ -1,6 +1,7 @@
 import os
 import subprocess
 import threading
+import time
 from pathlib import Path
 
 import numpy as np
@@ -12,9 +13,15 @@ from flimkit_fiji_bridge.server import BridgeState, create_server
 SCRIPT = Path(__file__).parents[1] / 'fiji' / 'FijiBridge.groovy'
 
 
+class _SlowImportState(BridgeState):
+    def import_rois(self, payload):
+        time.sleep(11)
+        return super().import_rois(payload)
+
+
 @pytest.fixture
 def running_fiji_server():
-    state = BridgeState(
+    state = _SlowImportState(
         images={
             'intensity': np.arange(35, dtype=np.float32).reshape(5, 7),
             'lifetime': np.arange(35, dtype=np.float32).reshape(5, 7) / 10.0,
@@ -49,6 +56,13 @@ def test_fiji_bridge_contains_clear_java_error():
 
     assert 'Fiji Bridge requires Java 8 or newer' in source
     assert 'download a current Fiji release with its bundled JDK' in source
+
+
+def test_fiji_bridge_waits_without_timeout_for_roi_import():
+    source = SCRIPT.read_text(encoding='utf-8')
+
+    assert "openConnection('/v1/rois', 'POST', 0)" in source
+    assert 'connection.setReadTimeout(readTimeoutMs)' in source
 
 
 def test_installed_fiji_fetches_images_and_posts_roi(running_fiji_server):

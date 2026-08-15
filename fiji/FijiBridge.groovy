@@ -20,12 +20,12 @@ if (javaMajor < 8) {
 println("FIJI_JAVA_OK version=${javaVersion}")
 
 
-def openConnection = { String path, String method ->
+def openConnection = { String path, String method, int readTimeoutMs ->
     def connection = (HttpURLConnection) new URL("${baseUrl}${path}").openConnection()
     connection.setRequestMethod(method)
     connection.setRequestProperty('Authorization', "Bearer ${token}")
     connection.setConnectTimeout(10000)
-    connection.setReadTimeout(10000)
+    connection.setReadTimeout(readTimeoutMs)
     return connection
 }
 
@@ -41,7 +41,11 @@ def readResponse = { HttpURLConnection connection ->
 }
 
 def fetchTiff = { String imageId, String title ->
-    def connection = openConnection("/v1/images/${imageId}.tif", 'GET')
+    def connection = openConnection(
+        "/v1/images/${imageId}.tif",
+        'GET',
+        10000,
+    )
     def response
     try {
         response = readResponse(connection)
@@ -105,7 +109,7 @@ def geojson = '''{
   }]
 }'''
 def requestBody = geojson.getBytes('UTF-8')
-def postConnection = openConnection('/v1/rois', 'POST')
+def postConnection = openConnection('/v1/rois', 'POST', 0)
 postConnection.setRequestProperty('Content-Type', 'application/geo+json')
 postConnection.setDoOutput(true)
 postConnection.setFixedLengthStreamingMode(requestBody.length)
