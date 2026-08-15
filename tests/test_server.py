@@ -1,5 +1,6 @@
 import json
 import threading
+from contextlib import contextmanager
 from io import BytesIO
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
@@ -16,6 +17,27 @@ def test_server_refuses_non_loopback_binding():
 
     with pytest.raises(ValueError, match='loopback'):
         create_server('0.0.0.0', 0, 'test-token', state)
+
+
+def test_server_refuses_hostname_binding():
+    state = BridgeState(images={})
+
+    with pytest.raises(ValueError, match='numeric loopback'):
+        create_server('localhost', 0, 'test-token', state)
+
+
+@contextmanager
+def running_source(source):
+    server = create_server('127.0.0.1', 0, 'test-token', source)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        host, port = server.server_address[:2]
+        yield f'http://{host}:{port}'
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
 
 
 @pytest.fixture
@@ -152,3 +174,46 @@ def test_roi_export_requires_pairing_token(running_server):
         urlopen(f'{base_url}/v1/rois')
 
     assert caught.value.code == 401
+
+
+def test_unserializable_roi_export_returns_service_error():
+    class Source(BridgeState):
+        def export_rois(self):
+            return {'type': 'FeatureCollection', 'features': [object()]}
+
+    with running_source(Source(images={})) as base_url:
+        request = authorized_request(f'{base_url}/v1/rois')
+        with pytest.raises(HTTPError) as caught:
+            urlopen(request)
+
+    assert caught.value.code == 503
+
+
+def test_unconvertible_image_returns_service_error():
+    state = BridgeState(images={'intensity': object()})
+
+    with running_source(state) as base_url:
+        request = authorized_request(f'{base_url}/v1/images/intensity.tif')
+        with pytest.raises(HTTPError) as caught:
+            urlopen(request)
+
+    assert caught.value.code == 503
+
+
+def test_malformed_geojson_type_error_returns_client_error():
+    class Source(BridgeState):
+        def import_rois(self, payload):
+            raise TypeError('coordinate must be numeric')
+
+    payload = {'type': 'FeatureCollection', 'features': []}
+    with running_source(Source(images={})) as base_url:
+        request = authorized_request(
+            f'{base_url}/v1/rois',
+            data=json.dumps(payload).encode('utf-8'),
+            method='POST',
+            content_type='application/geo+json',
+        )
+        with pytest.raises(HTTPError) as caught:
+            urlopen(request)
+
+    assert caught.value.code == 400

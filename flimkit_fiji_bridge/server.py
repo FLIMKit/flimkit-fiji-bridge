@@ -14,8 +14,6 @@ _MAX_ROI_BYTES = 1_000_000
 
 
 def is_loopback_host(host: str) -> bool:
-    if host == 'localhost':
-        return True
     try:
         return ipaddress.ip_address(host).is_loopback
     except ValueError:
@@ -65,19 +63,24 @@ def create_server(
     source: BridgeDataSource,
 ):
     if not is_loopback_host(host):
-        raise ValueError('The Fiji bridge may bind only to a loopback address')
+        raise ValueError(
+            'The Fiji bridge may bind only to a numeric loopback address',
+        )
 
     class Handler(BaseHTTPRequestHandler):
         def _authorized(self):
             return self.headers.get('Authorization') == f'Bearer {token}'
 
-        def _send_json(self, status, payload, content_type='application/json'):
-            body = json.dumps(payload).encode('utf-8')
+        def _send_body(self, status, body, content_type):
             self.send_response(status)
             self.send_header('Content-Type', content_type)
             self.send_header('Content-Length', str(len(body)))
             self.end_headers()
             self.wfile.write(body)
+
+        def _send_json(self, status, payload, content_type='application/json'):
+            body = json.dumps(payload).encode('utf-8')
+            self._send_body(status, body, content_type)
 
         def _require_authorization(self):
             if self._authorized():
@@ -98,10 +101,11 @@ def create_server(
                     return
                 try:
                     payload = source.export_rois()
+                    body = json.dumps(payload).encode('utf-8')
                 except Exception as error:
                     self._send_json(503, {'error': str(error)})
                     return
-                self._send_json(200, payload, 'application/geo+json')
+                self._send_body(200, body, 'application/geo+json')
                 return
 
             prefix = '/v1/images/'
@@ -118,17 +122,17 @@ def create_server(
                 except Exception as error:
                     self._send_json(503, {'error': str(error)})
                     return
-                buffer = BytesIO()
-                tifffile.imwrite(
-                    buffer,
-                    np.asarray(image, dtype=np.float32),
-                )
-                body = buffer.getvalue()
-                self.send_response(200)
-                self.send_header('Content-Type', 'image/tiff')
-                self.send_header('Content-Length', str(len(body)))
-                self.end_headers()
-                self.wfile.write(body)
+                try:
+                    buffer = BytesIO()
+                    tifffile.imwrite(
+                        buffer,
+                        np.asarray(image, dtype=np.float32),
+                    )
+                    body = buffer.getvalue()
+                except Exception as error:
+                    self._send_json(503, {'error': str(error)})
+                    return
+                self._send_body(200, body, 'image/tiff')
                 return
             self.send_error(404)
 
@@ -163,7 +167,7 @@ def create_server(
                 return
             try:
                 region_ids = source.import_rois(payload)
-            except ValueError as error:
+            except (TypeError, ValueError) as error:
                 self._send_json(400, {'error': str(error)})
                 return
             except Exception as error:

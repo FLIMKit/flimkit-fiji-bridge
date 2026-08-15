@@ -14,7 +14,7 @@ From FLIMKit, `Tools > Fiji Bridge...` now starts an authenticated loopback serv
 2. export the current FLIMKit Regions table as GeoJSON;
 3. import a Fiji GeoJSON `FeatureCollection` into the current FLIMKit Regions table.
 
-Communication stays on `127.0.0.1` and requires the generated bearer token. The server refuses non-loopback binding. The current Fiji script remains a headless transport check; a normal Fiji ROI Manager interface is still future work.
+Communication stays on `127.0.0.1`. Image and ROI endpoints require the generated bearer token. The status endpoint is unauthenticated and reports only the protocol name and version. The server refuses non-loopback binding. The current Fiji script remains a headless transport check; a normal Fiji ROI Manager interface is still future work.
 
 ## Requirements
 

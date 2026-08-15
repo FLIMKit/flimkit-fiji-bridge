@@ -79,3 +79,34 @@ def test_plugin_tool_starts_runtime_and_shows_pairing_details(monkeypatch):
     assert 'http://127.0.0.1:8123' in messages[0][1]
     assert 'pairing-token' in messages[0][1]
     assert messages[0][2] is app.root
+
+
+def test_runtime_closes_server_if_thread_start_fails(monkeypatch):
+    import flimkit_fiji_bridge.runtime as runtime_module
+
+    class Server:
+        server_address = ('127.0.0.1', 8123)
+
+        def __init__(self):
+            self.close_count = 0
+
+        def serve_forever(self):
+            pass
+
+        def server_close(self):
+            self.close_count += 1
+
+    server = Server()
+    monkeypatch.setattr(runtime_module, 'create_server', lambda *args: server)
+    monkeypatch.setattr(
+        runtime_module.threading.Thread,
+        'start',
+        lambda self: (_ for _ in ()).throw(RuntimeError('thread failed')),
+    )
+    runtime = BridgeRuntime(source_factory=_source_factory)
+
+    with pytest.raises(RuntimeError, match='thread failed'):
+        runtime.start(_APP, token='known-token')
+
+    assert server.close_count == 1
+    assert not runtime.running

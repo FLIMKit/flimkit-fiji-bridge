@@ -38,7 +38,9 @@ class BridgeRuntime:
         token: Optional[str] = None,
     ) -> BridgeConnection:
         if not is_loopback_host(host):
-            raise ValueError('The Fiji bridge may bind only to a loopback address')
+            raise ValueError(
+                'The Fiji bridge may bind only to a numeric loopback address',
+            )
 
         with self._lock:
             if self._connection is not None:
@@ -61,7 +63,11 @@ class BridgeRuntime:
                 name='flimkit-fiji-bridge',
                 daemon=True,
             )
-            thread.start()
+            try:
+                thread.start()
+            except BaseException:
+                server.server_close()
+                raise
             self._server = server
             self._thread = thread
             self._app = app
