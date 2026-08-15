@@ -8,7 +8,7 @@ Below is a starting point, adapted from [FLIMKit's own CONTRIBUTING.md](https://
 
 Thanks for your interest in this add-on. Bug reports and pull requests are welcome.
 
-This add-on is maintained by `<your name>`. It is MIT licensed, so contributions are accepted under the same terms.
+This add-on is maintained by the FLIMKit contributors. It is MIT licensed, so contributions are accepted under the same terms.
 
 ## Reporting bugs
 
