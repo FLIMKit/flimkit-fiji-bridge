@@ -53,7 +53,7 @@ python -m pytest -q
 Expected result:
 
 ```text
-21 passed
+26 passed
 ```
 
 The test is headless, so Fiji does not open a visible image window. Success means a real Fiji process fetched both TIFF images, checked their values, and sent the GeoJSON ROI back to Python.
