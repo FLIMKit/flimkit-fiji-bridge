@@ -42,10 +42,16 @@ def running_source(source):
 
 @pytest.fixture
 def running_server():
-    state = BridgeState(images={
-        'intensity': np.arange(35, dtype=np.float32).reshape(5, 7),
-        'lifetime': np.arange(35, dtype=np.float32).reshape(5, 7) / 10.0,
-    })
+    state = BridgeState(
+        images={
+            'intensity': np.arange(35, dtype=np.float32).reshape(5, 7),
+            'lifetime': np.arange(35, dtype=np.float32).reshape(5, 7) / 10.0,
+        },
+        units={
+            'intensity': 'photons',
+            'lifetime': 'ns',
+        },
+    )
     server = create_server('127.0.0.1', 0, 'test-token', state)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
@@ -98,6 +104,7 @@ def test_authorized_image_round_trips_as_float_tiff(running_server, image_id):
 
     assert response.status == 200
     assert response.headers['Content-Type'] == 'image/tiff'
+    assert response.headers['X-FLIMKit-Value-Unit'] == state.units[image_id]
     np.testing.assert_array_equal(received, state.images[image_id])
     assert received.dtype == np.float32
 
@@ -190,7 +197,28 @@ def test_unserializable_roi_export_returns_service_error():
 
 
 def test_unconvertible_image_returns_service_error():
-    state = BridgeState(images={'intensity': object()})
+    state = BridgeState(
+        images={'intensity': object()},
+        units={'intensity': 'photons'},
+    )
+
+    with running_source(state) as base_url:
+        request = authorized_request(f'{base_url}/v1/images/intensity.tif')
+        with pytest.raises(HTTPError) as caught:
+            urlopen(request)
+
+    assert caught.value.code == 503
+
+
+@pytest.mark.parametrize('units', [
+    {},
+    {'intensity': 'ns\r\nX-Injected: true'},
+])
+def test_missing_or_unsafe_image_unit_returns_service_error(units):
+    state = BridgeState(
+        images={'intensity': np.ones((2, 3), dtype=np.float32)},
+        units=units,
+    )
 
     with running_source(state) as base_url:
         request = authorized_request(f'{base_url}/v1/images/intensity.tif')

@@ -33,6 +33,7 @@ class BridgeState:
     """In-memory data source used by isolated bridge tests."""
 
     images: dict[str, np.ndarray]
+    units: dict[str, str] = field(default_factory=dict)
     received_rois: list[dict] = field(default_factory=list)
     rois: dict = field(default_factory=lambda: {
         'type': 'FeatureCollection',
@@ -41,7 +42,10 @@ class BridgeState:
     _next_region_id: int = field(default=0, init=False, repr=False)
 
     def get_images(self) -> Dict[str, Any]:
-        return self.images
+        return {
+            'images': self.images,
+            'units': self.units,
+        }
 
     def export_rois(self) -> Dict:
         return copy.deepcopy(self.rois)
@@ -71,10 +75,12 @@ def create_server(
         def _authorized(self):
             return self.headers.get('Authorization') == f'Bearer {token}'
 
-        def _send_body(self, status, body, content_type):
+        def _send_body(self, status, body, content_type, headers=None):
             self.send_response(status)
             self.send_header('Content-Type', content_type)
             self.send_header('Content-Length', str(len(body)))
+            for name, value in (headers or {}).items():
+                self.send_header(name, value)
             self.end_headers()
             self.wfile.write(body)
 
@@ -114,13 +120,27 @@ def create_server(
                     return
                 image_id = self.path[len(prefix):-len('.tif')]
                 try:
-                    images = source.get_images()
-                    image = images[image_id]
-                except KeyError:
-                    self.send_error(404)
-                    return
+                    image_bundle = source.get_images()
+                    images = image_bundle['images']
+                    units = image_bundle['units']
                 except Exception as error:
                     self._send_json(503, {'error': str(error)})
+                    return
+                if not isinstance(images, dict) or not isinstance(units, dict):
+                    self._send_json(503, {'error': 'Image metadata is unavailable'})
+                    return
+                if image_id not in images:
+                    self.send_error(404)
+                    return
+                image = images[image_id]
+                unit = units.get(image_id)
+                if (
+                    not isinstance(unit, str)
+                    or not unit
+                    or '\r' in unit
+                    or '\n' in unit
+                ):
+                    self._send_json(503, {'error': 'Image unit is unavailable'})
                     return
                 try:
                     buffer = BytesIO()
@@ -132,7 +152,12 @@ def create_server(
                 except Exception as error:
                     self._send_json(503, {'error': str(error)})
                     return
-                self._send_body(200, body, 'image/tiff')
+                self._send_body(
+                    200,
+                    body,
+                    'image/tiff',
+                    headers={'X-FLIMKit-Value-Unit': unit},
+                )
                 return
             self.send_error(404)
 

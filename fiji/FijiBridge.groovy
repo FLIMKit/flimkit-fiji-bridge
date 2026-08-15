@@ -33,10 +33,11 @@ def readResponse = { HttpURLConnection connection ->
     def status = connection.getResponseCode()
     def stream = status >= 400 ? connection.getErrorStream() : connection.getInputStream()
     def body = stream == null ? new byte[0] : stream.bytes
+    def valueUnit = connection.getHeaderField('X-FLIMKit-Value-Unit')
     if (stream != null) {
         stream.close()
     }
-    return [status, body]
+    return [status, body, valueUnit]
 }
 
 def fetchTiff = { String imageId, String title ->
@@ -50,11 +51,17 @@ def fetchTiff = { String imageId, String title ->
     if (response[0] != 200) {
         throw new IllegalStateException("GET ${imageId} returned ${response[0]}")
     }
+    def valueUnit = response[2]
+    if (valueUnit == null || valueUnit.isEmpty()) {
+        throw new IllegalStateException("GET ${imageId} returned no value unit")
+    }
     def image = new Opener().openTiff(
         new ByteArrayInputStream((byte[]) response[1]), title)
     if (image == null) {
         throw new IllegalStateException("Fiji could not decode ${imageId} TIFF")
     }
+    image.getCalibration().setValueUnit(valueUnit)
+    image.setProperty('FLIMKit value unit', valueUnit)
     if (image.getWidth() != 7 || image.getHeight() != 5) {
         throw new IllegalStateException(
             "${imageId} shape was ${image.getWidth()}x${image.getHeight()}, expected 7x5")
@@ -77,6 +84,13 @@ println(String.format(
     intensityValue,
     lifetimeValue,
 ))
+def intensityUnit = intensity.getCalibration().getValueUnit()
+def lifetimeUnit = lifetime.getCalibration().getValueUnit()
+if (intensityUnit != 'photons' || lifetimeUnit != 'ns') {
+    throw new IllegalStateException(
+        "unit mismatch: intensity=${intensityUnit}, lifetime=${lifetimeUnit}")
+}
+println("FIJI_UNITS_OK intensity=${intensityUnit} lifetime=${lifetimeUnit}")
 
 
 def geojson = '''{

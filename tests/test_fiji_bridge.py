@@ -14,10 +14,16 @@ SCRIPT = Path(__file__).parents[1] / 'fiji' / 'FijiBridge.groovy'
 
 @pytest.fixture
 def running_fiji_server():
-    state = BridgeState(images={
-        'intensity': np.arange(35, dtype=np.float32).reshape(5, 7),
-        'lifetime': np.arange(35, dtype=np.float32).reshape(5, 7) / 10.0,
-    })
+    state = BridgeState(
+        images={
+            'intensity': np.arange(35, dtype=np.float32).reshape(5, 7),
+            'lifetime': np.arange(35, dtype=np.float32).reshape(5, 7) / 10.0,
+        },
+        units={
+            'intensity': 'photons',
+            'lifetime': 'ns',
+        },
+    )
     server = create_server('127.0.0.1', 0, 'test-token', state)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
@@ -69,6 +75,7 @@ def test_installed_fiji_fetches_images_and_posts_roi(running_fiji_server):
     assert completed.returncode == 0, output
     assert 'FIJI_JAVA_OK version=' in output, output
     assert 'FIJI_IMAGES_OK intensity=34.0 lifetime=3.4' in output, output
+    assert 'FIJI_UNITS_OK intensity=photons lifetime=ns' in output, output
     assert 'FIJI_ROI_POST_OK features=1' in output, output
     assert len(state.received_rois) == 1
     feature = state.received_rois[0]['features'][0]

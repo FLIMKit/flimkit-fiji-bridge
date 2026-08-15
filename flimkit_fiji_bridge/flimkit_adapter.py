@@ -34,11 +34,20 @@ class FlimkitDataSource:
         self._bindings = bindings
 
     def get_images(self) -> Dict[str, Any]:
-        images = self._bindings.get_current_images(self._app)
-        return {
+        current = self._bindings.get_current_images(self._app)
+        images = current['images']
+        units = current['units']
+        selected_images = {
             name: images[name]
             for name in ('intensity', 'lifetime')
             if name in images
+        }
+        return {
+            'images': selected_images,
+            'units': {
+                name: units[name]
+                for name in selected_images
+            },
         }
 
     def export_rois(self) -> Dict:

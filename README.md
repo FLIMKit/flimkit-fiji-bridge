@@ -10,7 +10,7 @@ This branch connects the bridge server to FLIMKit's public image and ROI binding
 
 From FLIMKit, `Tools > Fiji Bridge...` now starts an authenticated loopback server and shows its address and pairing token. The server can:
 
-1. fetch copies of the current intensity and lifetime images as `float32` TIFF;
+1. fetch copies of the current fitted intensity and lifetime images as `float32` TIFF, with pixel-value units (`photons` or `ns`);
 2. export the current FLIMKit Regions table as GeoJSON;
 3. import a Fiji GeoJSON `FeatureCollection` into the current FLIMKit Regions table.
 
@@ -114,7 +114,9 @@ The Python side exposes five local endpoints:
 | `GET` | `/v1/rois` | Export the current FLIMKit ROIs as GeoJSON |
 | `POST` | `/v1/rois` | Import a GeoJSON `FeatureCollection` into FLIMKit |
 
-Image IDs use an explicit allowlist. URL values are never passed to `getattr`. The production data source calls `get_current_images(app)`, `export_rois_geojson(app)`, and `import_rois_geojson(app, payload)` from `flimkit.plugins`.
+Image IDs use an explicit allowlist. URL values are never passed to `getattr`. Each TIFF response includes `X-FLIMKit-Value-Unit`; Fiji stores that value in the image calibration. The production data source calls `get_current_images(app)`, `export_rois_geojson(app)`, and `import_rois_geojson(app, payload)` from `flimkit.plugins`.
+
+The image scope is fitted lifetime and photon-count intensity only. Raw per-pixel decay histograms are not transferred. A raw-decay binding would need a separate data and metadata contract.
 
 The Fiji script is:
 

@@ -16,9 +16,16 @@ class _Bindings:
     def get_current_images(self, app):
         self.calls.append(('images', app))
         return {
-            'intensity': np.ones((2, 3), dtype=np.float32),
-            'lifetime': np.full((2, 3), 2.5, dtype=np.float32),
-            'private-map': np.zeros((2, 3), dtype=np.float32),
+            'images': {
+                'intensity': np.ones((2, 3), dtype=np.float32),
+                'lifetime': np.full((2, 3), 2.5, dtype=np.float32),
+                'private-map': np.zeros((2, 3), dtype=np.float32),
+            },
+            'units': {
+                'intensity': 'photons',
+                'lifetime': 'ns',
+                'private-map': 'private',
+            },
         }
 
     def export_rois_geojson(self, app):
@@ -36,11 +43,15 @@ def test_adapter_calls_public_flimkit_bindings_with_live_app():
     source = FlimkitDataSource(app, bindings=bindings)
     payload = {'type': 'FeatureCollection', 'features': []}
 
-    images = source.get_images()
+    image_bundle = source.get_images()
     exported = source.export_rois()
     region_ids = source.import_rois(payload)
 
-    assert set(images) == {'intensity', 'lifetime'}
+    assert set(image_bundle['images']) == {'intensity', 'lifetime'}
+    assert image_bundle['units'] == {
+        'intensity': 'photons',
+        'lifetime': 'ns',
+    }
     assert exported == payload
     assert region_ids == [4, 5]
     assert bindings.calls == [

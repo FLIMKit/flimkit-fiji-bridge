@@ -42,7 +42,8 @@ def test_adapter_uses_real_flimkit_image_and_roi_bindings():
     preview = _Preview(intensity, lifetime, manager)
     source = FlimkitDataSource(_App(preview))
 
-    images = source.get_images()
+    image_bundle = source.get_images()
+    images = image_bundle['images']
     exported = source.export_rois()
     region_ids = source.import_rois({
         'type': 'FeatureCollection',
@@ -59,6 +60,10 @@ def test_adapter_uses_real_flimkit_image_and_roi_bindings():
     np.testing.assert_array_equal(images['intensity'], expected_intensity)
     np.testing.assert_array_equal(images['lifetime'], lifetime)
     assert images['intensity'].ndim == 2
+    assert image_bundle['units'] == {
+        'intensity': 'photons',
+        'lifetime': 'ns',
+    }
     properties = exported['features'][0]['properties']
     assert properties['name'] == 'FLIMKit rectangle'
     assert properties['statistics'] == {'tau_median': 2.5}
