@@ -6,7 +6,7 @@ Direct image and ROI exchange between [FLIMKit](https://github.com/FLIMKit/FLIMK
 
 ## Current status
 
-This branch connects the bridge server to FLIMKit's public image and ROI bindings. It depends on [FLIMKit PR #52](https://github.com/FLIMKit/FLIMKit/pull/52) and must not merge before that PR.
+This add-on connects the bridge server to FLIMKit's public image and ROI bindings on `main`.
 
 From FLIMKit, `Tools > Fiji Bridge...` now starts an authenticated loopback server and shows its address and pairing token. The server can:
 
@@ -19,7 +19,7 @@ Communication stays on `127.0.0.1`. Image and ROI endpoints require the generate
 ## Requirements
 
 - Python 3.12 or newer, matching FLIMKit's requirement.
-- A FLIMKit build containing the public image and ROI bindings from [FLIMKit PR #52](https://github.com/FLIMKit/FLIMKit/pull/52).
+- A FLIMKit build containing the public image and ROI bindings merged in [FLIMKit PR #52](https://github.com/FLIMKit/FLIMKit/pull/52).
 - A working Fiji installation.
 - `pytest`, NumPy, and tifffile for the bridge tests.
 
@@ -39,7 +39,7 @@ python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
 python -m pip install --no-deps \
-  'flimkit @ git+https://github.com/FLIMKit/FLIMKit.git@refs/pull/52/head'
+  'flimkit @ git+https://github.com/FLIMKit/FLIMKit.git@main'
 python -m pip install -e '.[test]'
 ```
 
@@ -153,11 +153,9 @@ Registration will remain a Fiji-side operation. The planned Fiji interface will 
 
 ## Next implementation steps
 
-1. Review and merge FLIMKit PR #52.
-2. Change bridge CI from the PR reference back to FLIMKit `main`.
-3. Turn the current Fiji script into a small command with a normal user interface.
-4. Add bidirectional Fiji ROI Manager conversion.
-5. Test registered ROI transfer with Fiji's existing registration tools.
+1. Turn the current Fiji script into a small command with a normal user interface.
+2. Add bidirectional Fiji ROI Manager conversion.
+3. Test registered ROI transfer with Fiji's existing registration tools.
 
 ## Development
 
