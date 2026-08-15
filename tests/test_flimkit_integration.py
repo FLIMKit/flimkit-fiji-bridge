@@ -27,10 +27,18 @@ class _App:
 
 
 def test_adapter_uses_real_flimkit_image_and_roi_bindings():
-    intensity = np.arange(12, dtype=np.float32).reshape(3, 4)
-    lifetime = intensity / 10.0
+    intensity = np.arange(24, dtype=np.float32).reshape(3, 4, 2)
+    expected_intensity = intensity.sum(axis=2)
+    lifetime = expected_intensity / 10.0
     manager = RoiManager()
-    manager.add_region('FLIMKit rectangle', 'rect', [[1, 1], [3, 2]])
+    region_id = manager.add_region(
+        'FLIMKit rectangle',
+        'rect',
+        [[1, 1], [3, 2]],
+    )
+    region = manager.get_region(region_id)
+    assert region is not None
+    region['statistics'] = {'tau_median': 2.5}
     preview = _Preview(intensity, lifetime, manager)
     source = FlimkitDataSource(_App(preview))
 
@@ -48,10 +56,13 @@ def test_adapter_uses_real_flimkit_image_and_roi_bindings():
         }],
     })
 
-    np.testing.assert_array_equal(images['intensity'], intensity)
+    np.testing.assert_array_equal(images['intensity'], expected_intensity)
     np.testing.assert_array_equal(images['lifetime'], lifetime)
-    assert images['intensity'] is not intensity
-    assert exported['features'][0]['properties']['name'] == 'FLIMKit rectangle'
+    assert images['intensity'].ndim == 2
+    properties = exported['features'][0]['properties']
+    assert properties['name'] == 'FLIMKit rectangle'
+    assert properties['statistics'] == {'tau_median': 2.5}
+    assert 'tau_median' not in properties
     imported = manager.get_region(region_ids[0])
     assert imported is not None
     assert imported['name'] == 'Fiji polygon'
