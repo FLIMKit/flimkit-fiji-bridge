@@ -29,6 +29,8 @@ dependencies = [
 test = ['pytest==9.0.2']
 
 [project.urls]
+Repository = 'https://github.com/FLIMKit/flimkit-fiji-bridge'
+Issues = 'https://github.com/FLIMKit/flimkit-fiji-bridge/issues'
 FLIMKit = 'https://github.com/FLIMKit/FLIMKit'
 
 [project.entry-points.'flimkit.plugins']
