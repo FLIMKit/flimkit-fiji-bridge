@@ -1,0 +1,42 @@
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Build the package
+        run: |
+          python -m pip install --upgrade pip build
+          python -m build
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          fail_on_unmatched_files: true
+          generate_release_notes: false
+          body: |
+            Direct image and ROI exchange between FLIMKit and Fiji.
+
+            ```
+            pip install flimkit-fiji-bridge
+            ```
+
+            That pulls in `flimkit-bridge`, the server both this add-on and the QuPath extension talk to. There is one server, one port and one `Tools > FLIMKit Bridge...` button in FLIMKit.
+
+            The Fiji client is currently a headless transport check. A normal Fiji plugin with a menu and ROI Manager integration is in progress.
+
+            The wheel and sdist are attached below for anyone installing offline, or into `~/.flimkit/plugins/`.

@@ -46,6 +46,7 @@ source .venv/bin/activate
 python -m pip install --upgrade pip
 python -m pip install --no-deps \
   'flimkit @ git+https://github.com/FLIMKit/FLIMKit.git@main'
+python -m pip install 'flimkit-bridge @ git+https://github.com/FLIMKit/flimkit-bridge'
 python -m pip install -e '.[test]'
 ```
 
