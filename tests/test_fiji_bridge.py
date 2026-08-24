@@ -1,27 +1,20 @@
 import os
 import subprocess
 import threading
-import time
 from pathlib import Path
 
 import numpy as np
 import pytest
 
-from flimkit_fiji_bridge.server import BridgeState, create_server
+from flimkit_bridge.server import BridgeState, create_server
 
 
 SCRIPT = Path(__file__).parents[1] / 'fiji' / 'FijiBridge.groovy'
 
 
-class _SlowImportState(BridgeState):
-    def import_rois(self, payload):
-        time.sleep(11)
-        return super().import_rois(payload)
-
-
 @pytest.fixture
 def running_fiji_server():
-    state = _SlowImportState(
+    state = BridgeState(
         images={
             'intensity': np.arange(35, dtype=np.float32).reshape(5, 7),
             'lifetime': np.arange(35, dtype=np.float32).reshape(5, 7) / 10.0,

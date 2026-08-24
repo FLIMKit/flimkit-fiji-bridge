@@ -22,8 +22,7 @@ classifiers = [
     'Topic :: Scientific/Engineering :: Bio-Informatics',
 ]
 dependencies = [
-    'numpy==2.4.2',
-    'tifffile>=2021.7.2',
+    'flimkit-bridge>=0.6.0',
 ]
 
 [project.optional-dependencies]
@@ -33,9 +32,6 @@ test = ['pytest==9.0.2']
 Repository = 'https://github.com/FLIMKit/flimkit-fiji-bridge'
 Issues = 'https://github.com/FLIMKit/flimkit-fiji-bridge/issues'
 FLIMKit = 'https://github.com/FLIMKit/FLIMKit'
-
-[project.entry-points.'flimkit.plugins']
-fiji_bridge = 'flimkit_fiji_bridge'
 
 [tool.setuptools.packages.find]
 include = ['flimkit_fiji_bridge*']

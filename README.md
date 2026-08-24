@@ -16,6 +16,12 @@ From FLIMKit, `Tools > Fiji Bridge...` now starts an authenticated loopback serv
 
 Communication stays on `127.0.0.1`. Image and ROI endpoints require the generated bearer token. The status endpoint is unauthenticated and reports only the protocol name and version. The server refuses non-loopback binding. Image reads use a 10-second timeout. ROI imports wait for FLIMKit to finish because the UI-thread mutation cannot be cancelled safely; this prevents a timeout from reporting failure while an import may still complete. The current Fiji script remains a headless transport check; a normal Fiji ROI Manager interface is still future work.
 
+## Where the server lives
+
+This add-on no longer carries a server. It uses [flimkit-bridge](https://github.com/FLIMKit/flimkit-bridge), the same one the QuPath extension talks to, which answers the three endpoints the Fiji client uses and nineteen more besides. `pip install flimkit-fiji-bridge` pulls it in.
+
+Pairing is through `~/.flimkit/bridge.json`, written when FLIMKit starts or when `flimkit-bridge` is run headless. There is one `Tools > FLIMKit Bridge...` button in FLIMKit now rather than one per client.
+
 ## Requirements
 
 - Python 3.12 or newer, matching FLIMKit's requirement.
