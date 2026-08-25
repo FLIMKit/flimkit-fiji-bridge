@@ -18,7 +18,13 @@ Communication stays on `127.0.0.1`. Image and ROI endpoints require the generate
 
 ## Where the server lives
 
-This add-on no longer carries a server. It uses [flimkit-bridge](https://github.com/FLIMKit/flimkit-bridge), the same one the QuPath extension talks to, which answers the three endpoints the Fiji client uses and nineteen more besides. `pip install flimkit-fiji-bridge` pulls it in.
+This add-on no longer carries a server, and it is not a Python package. It uses [flimkit-bridge](https://github.com/FLIMKit/flimkit-bridge), the same one the QuPath extension talks to, which answers the three endpoints the Fiji client uses and nineteen more besides.
+
+```bash
+pip install flimkit-bridge
+```
+
+That is the only thing to install on the Python side. What this repository holds is the Fiji client and, once it exists, the plugin jar.
 
 Pairing is through `~/.flimkit/bridge.json`, written when FLIMKit starts or when `flimkit-bridge` is run headless. There is one `Tools > FLIMKit Bridge...` button in FLIMKit now rather than one per client.
 
@@ -47,7 +53,7 @@ python -m pip install --upgrade pip
 python -m pip install --no-deps \
   'flimkit @ git+https://github.com/FLIMKit/FLIMKit.git@main'
 python -m pip install 'flimkit-bridge @ git+https://github.com/FLIMKit/flimkit-bridge'
-python -m pip install -e '.[test]'
+python -m pip install pytest numpy
 ```
 
 Run all tests against the current ARM64 Fiji launcher:
@@ -167,7 +173,7 @@ Registration will remain a Fiji-side operation. The planned Fiji interface will 
 ## Development
 
 ```bash
-python -m pip install -e '.[test]'
+python -m pip install pytest numpy
 python -m pytest -q
 ```
 
