@@ -48,6 +48,31 @@ public class FitResults {
             table.addValue(prefix + (i + 1), values.get(i).getAsDouble());
     }
 
+    public static ResultsTable summaryTable(JsonObject summary, String label) {
+        var table = new ResultsTable();
+        table.incrementCounter();
+        table.addLabel(label);
+        for (var key : summary.keySet()) {
+            var value = summary.get(key);
+            if (value == null || value.isJsonNull())
+                continue;
+            if (value.isJsonArray()) {
+                putArray(table, summary, key, key + " ");
+                continue;
+            }
+            if (!value.isJsonPrimitive())
+                continue;
+            var primitive = value.getAsJsonPrimitive();
+            if (primitive.isNumber())
+                table.addValue(key, primitive.getAsDouble());
+            else if (primitive.isBoolean())
+                table.addValue(key, primitive.getAsBoolean() ? 1 : 0);
+            else
+                table.addValue(key, primitive.getAsString());
+        }
+        return table;
+    }
+
     public static List<String> errors(JsonObject payload) {
         var found = new ArrayList<String>();
         for (var element : payload.getAsJsonArray("results")) {

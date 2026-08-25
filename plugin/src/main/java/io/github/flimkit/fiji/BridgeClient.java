@@ -171,5 +171,12 @@ public class BridgeClient {
         return text(request("/v1/phasor/settings").GET().build(), "GET phasor settings");
     }
 
+    public String pipeline(String body) throws IOException, InterruptedException {
+        return text(request("/v1/pipeline")
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8))
+                .build(), "POST pipeline");
+    }
+
     public record Image(byte[] tiff, String unit) {}
 }

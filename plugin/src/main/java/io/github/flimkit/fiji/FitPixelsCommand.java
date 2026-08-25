@@ -66,6 +66,9 @@ public class FitPixelsCommand implements Command {
             if (names.isEmpty())
                 names = List.of("tau_mean_amp", "tau_mean_int");
             stack(client, id, names).show();
+            if (result.has("global") && result.get("global").isJsonObject())
+                FitResults.summaryTable(result.getAsJsonObject("global"),
+                        "summed fit").show("FLIMKit per-pixel summary");
         } catch (Exception e) {
             ui.showDialog("Could not fit per-pixel.\n\n" + e.getMessage(),
                     "FLIMKit bridge");
