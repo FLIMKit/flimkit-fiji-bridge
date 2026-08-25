@@ -7,10 +7,11 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
         python-version: ['3.12', '3.14']
     steps:
       - uses: actions/checkout@v4
@@ -26,8 +27,8 @@ jobs:
             'flimkit @ git+https://github.com/FLIMKit/FLIMKit.git@main'
           pip install 'flimkit-bridge @ git+https://github.com/FLIMKit/flimkit-bridge'
 
-      - name: Install the add-on
-        run: pip install -e '.[test]'
+      - name: Install the test tools
+        run: pip install pytest numpy
 
       - name: Run tests
         run: pytest -q
