@@ -67,7 +67,7 @@ public class PhasorWindow extends JPanel {
                 dragging = nearest(e.getX(), e.getY());
                 if (dragging < 0 && cursors.size() < COLOURS.length) {
                     cursors.add(PhasorPlot.Cursor.ellipse(
-                            "c" + (cursors.size() + 1), toG(e.getX()), toS(e.getY()), 0.05));
+                            nextId(), toG(e.getX()), toS(e.getY()), 0.05));
                     dragging = cursors.size() - 1;
                 }
                 refresh();
@@ -104,6 +104,23 @@ public class PhasorWindow extends JPanel {
         addMouseMotionListener(mouse);
     }
 
+    private String nextId() {
+        int n = 1;
+        while (true) {
+            String candidate = "c" + n;
+            boolean taken = false;
+            for (var cursor : cursors) {
+                if (cursor.id().equals(candidate)) {
+                    taken = true;
+                    break;
+                }
+            }
+            if (!taken)
+                return candidate;
+            n++;
+        }
+    }
+
     void setDrawing(boolean on) {
         drawing = on;
     }
@@ -111,16 +128,20 @@ public class PhasorWindow extends JPanel {
     private void finishOutline() {
         var traced = outline;
         outline = null;
-        if (traced.size() < 3 || cursors.size() >= COLOURS.length) {
-            IJ.showStatus("That outline had fewer than three points.");
+        if (cursors.size() >= COLOURS.length) {
+            IJ.showStatus("Six cursors is the limit, matching FLIMKit's palette.");
+            refresh();
+            return;
+        }
+        if (traced.size() < 3) {
+            IJ.showStatus("That outline had fewer than three points. Drag to trace one.");
             refresh();
             return;
         }
         var vertices = new ArrayList<double[]>();
         for (var point : traced)
             vertices.add(new double[] {toG(point[0]), toS(point[1])});
-        cursors.add(PhasorPlot.Cursor.polygon("c" + (cursors.size() + 1), vertices));
-        drawing = false;
+        cursors.add(PhasorPlot.Cursor.polygon(nextId(), vertices));
         refresh();
     }
 
@@ -260,22 +281,23 @@ public class PhasorWindow extends JPanel {
     }
 
     void createRois() throws Exception {
-        var reply = JsonParser.parseString(client.phasorMask(
-                datasetId, PhasorPlot.requestBody(cursors, options, true)))
-                .getAsJsonObject();
-        int binning = reply.get("binning").isJsonNull() ? 1 : reply.get("binning").getAsInt();
-        byte[] labels = java.util.Base64.getDecoder().decode(
-                reply.get("labels").getAsString());
-        int width = reply.get("width").getAsInt();
-        int height = reply.get("height").getAsInt();
         RoiManager manager = RoiManager.getRoiManager();
         int added = 0;
-        for (int label = 1; label <= cursors.size(); label++) {
-            Roi roi = roiFromLabels(labels, width, height, label, binning);
+        for (int i = 0; i < cursors.size(); i++) {
+            var cursor = cursors.get(i);
+            var reply = JsonParser.parseString(client.phasorMask(datasetId,
+                    PhasorPlot.requestBody(List.of(cursor), options, true)))
+                    .getAsJsonObject();
+            int binning = reply.get("binning").isJsonNull()
+                    ? 1 : reply.get("binning").getAsInt();
+            byte[] labels = java.util.Base64.getDecoder().decode(
+                    reply.get("labels").getAsString());
+            Roi roi = roiFromLabels(labels, reply.get("width").getAsInt(),
+                    reply.get("height").getAsInt(), 1, binning);
             if (roi == null)
                 continue;
-            roi.setName("Phasor c" + label);
-            roi.setStrokeColor(COLOURS[(label - 1) % COLOURS.length]);
+            roi.setName("Phasor " + cursor.id());
+            roi.setStrokeColor(COLOURS[i % COLOURS.length]);
             manager.addRoi(roi);
             added++;
         }
