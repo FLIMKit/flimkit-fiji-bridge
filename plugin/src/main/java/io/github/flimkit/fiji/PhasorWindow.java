@@ -185,55 +185,17 @@ public class PhasorWindow extends JPanel {
         maxCount = Math.max(1, payload.get("max_count").getAsInt());
     }
 
-    static void report(String line) {
-        IJ.log(line);
-        System.out.println(line);
-    }
-
-    static String range(List<double[]> vertices, int axis) {
-        double low = Double.MAX_VALUE;
-        double high = -Double.MAX_VALUE;
-        for (var vertex : vertices) {
-            low = Math.min(low, vertex[axis]);
-            high = Math.max(high, vertex[axis]);
-        }
-        return String.format("%.3f..%.3f", low, high);
-    }
-
     void refresh() {
         repaint();
         lines.clear();
         if (cursors.isEmpty())
             return;
         try {
-            String body = PhasorPlot.requestBody(cursors, options, false, minPhotons);
-            var reply = JsonParser.parseString(client.phasorMask(datasetId, body))
+            var reply = JsonParser.parseString(client.phasorMask(datasetId,
+                    PhasorPlot.requestBody(cursors, options, false, minPhotons)))
                     .getAsJsonObject();
-            boolean empty = false;
-            for (var element : reply.getAsJsonArray("cursors")) {
-                var entry = element.getAsJsonObject();
-                lines.addElement(PhasorPlot.describe(entry));
-                if (entry.get("n_pixels").getAsInt() == 0)
-                    empty = true;
-            }
-            report("[FLIMKit phasor] min_photons=" + minPhotons + " cursors=" + cursors.size()
-                    + " panel=" + getWidth() + "x" + getHeight()
-                    + " anyEmpty=" + empty);
-            for (var cursor : cursors) {
-                if (cursor.vertices() == null) {
-                    report("  " + cursor.id() + " ellipse g=" + cursor.g()
-                            + " s=" + cursor.s() + " r=" + cursor.radius());
-                    continue;
-                }
-                report("  " + cursor.id() + " polygon vertices="
-                        + cursor.vertices().size()
-                        + " g " + range(cursor.vertices(), 0)
-                        + " s " + range(cursor.vertices(), 1));
-            }
-            if (empty) {
-                report("  reply: " + reply);
-                report("  request: " + body);
-            }
+            for (var element : reply.getAsJsonArray("cursors"))
+                lines.addElement(PhasorPlot.describe(element.getAsJsonObject()));
         } catch (Exception e) {
             IJ.showStatus("Could not count phasor pixels: " + e.getMessage());
         }
