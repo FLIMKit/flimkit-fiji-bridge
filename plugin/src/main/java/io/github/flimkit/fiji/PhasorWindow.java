@@ -174,11 +174,30 @@ public class PhasorWindow extends JPanel {
         return -1;
     }
 
+    private double minPhotons = PhasorPlot.DEFAULT_MIN_PHOTONS;
+
     void loadDensity() throws Exception {
+        String query = PhasorPlot.optionsQuery(options);
+        query = (query.isEmpty() ? "" : query + "&") + "min_photons=" + minPhotons;
         var payload = JsonParser.parseString(client.phasorPoints(
-                datasetId, BINS, PhasorPlot.optionsQuery(options))).getAsJsonObject();
+                datasetId, BINS, query)).getAsJsonObject();
         counts = PhasorPlot.decodeCounts(payload.get("counts").getAsString());
         maxCount = Math.max(1, payload.get("max_count").getAsInt());
+    }
+
+    static void report(String line) {
+        IJ.log(line);
+        System.out.println(line);
+    }
+
+    static String range(List<double[]> vertices, int axis) {
+        double low = Double.MAX_VALUE;
+        double high = -Double.MAX_VALUE;
+        for (var vertex : vertices) {
+            low = Math.min(low, vertex[axis]);
+            high = Math.max(high, vertex[axis]);
+        }
+        return String.format("%.3f..%.3f", low, high);
     }
 
     void refresh() {
@@ -187,11 +206,34 @@ public class PhasorWindow extends JPanel {
         if (cursors.isEmpty())
             return;
         try {
-            var reply = JsonParser.parseString(client.phasorMask(
-                    datasetId, PhasorPlot.requestBody(cursors, options, false)))
+            String body = PhasorPlot.requestBody(cursors, options, false, minPhotons);
+            var reply = JsonParser.parseString(client.phasorMask(datasetId, body))
                     .getAsJsonObject();
-            for (var element : reply.getAsJsonArray("cursors"))
-                lines.addElement(PhasorPlot.describe(element.getAsJsonObject()));
+            boolean empty = false;
+            for (var element : reply.getAsJsonArray("cursors")) {
+                var entry = element.getAsJsonObject();
+                lines.addElement(PhasorPlot.describe(entry));
+                if (entry.get("n_pixels").getAsInt() == 0)
+                    empty = true;
+            }
+            report("[FLIMKit phasor] min_photons=" + minPhotons + " cursors=" + cursors.size()
+                    + " panel=" + getWidth() + "x" + getHeight()
+                    + " anyEmpty=" + empty);
+            for (var cursor : cursors) {
+                if (cursor.vertices() == null) {
+                    report("  " + cursor.id() + " ellipse g=" + cursor.g()
+                            + " s=" + cursor.s() + " r=" + cursor.radius());
+                    continue;
+                }
+                report("  " + cursor.id() + " polygon vertices="
+                        + cursor.vertices().size()
+                        + " g " + range(cursor.vertices(), 0)
+                        + " s " + range(cursor.vertices(), 1));
+            }
+            if (empty) {
+                report("  reply: " + reply);
+                report("  request: " + body);
+            }
         } catch (Exception e) {
             IJ.showStatus("Could not count phasor pixels: " + e.getMessage());
         }
@@ -286,7 +328,7 @@ public class PhasorWindow extends JPanel {
         for (int i = 0; i < cursors.size(); i++) {
             var cursor = cursors.get(i);
             var reply = JsonParser.parseString(client.phasorMask(datasetId,
-                    PhasorPlot.requestBody(List.of(cursor), options, true)))
+                    PhasorPlot.requestBody(List.of(cursor), options, true, minPhotons)))
                     .getAsJsonObject();
             int binning = reply.get("binning").isJsonNull()
                     ? 1 : reply.get("binning").getAsInt();

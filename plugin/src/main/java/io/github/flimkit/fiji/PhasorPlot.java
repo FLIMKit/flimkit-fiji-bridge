@@ -51,8 +51,15 @@ public class PhasorPlot {
         return entry.has(key) && !entry.get(key).isJsonNull();
     }
 
+    public static final double DEFAULT_MIN_PHOTONS = 0.01;
+
     public static String requestBody(List<Cursor> cursors, JsonObject options,
                                      boolean labels) {
+        return requestBody(cursors, options, labels, DEFAULT_MIN_PHOTONS);
+    }
+
+    public static String requestBody(List<Cursor> cursors, JsonObject options,
+                                     boolean labels, double minPhotons) {
         var body = new JsonObject();
         var array = new JsonArray();
         for (var cursor : cursors) {
@@ -77,7 +84,7 @@ public class PhasorPlot {
             array.add(entry);
         }
         body.add("cursors", array);
-        body.addProperty("min_photons", 1.0);
+        body.addProperty("min_photons", minPhotons);
         if (options != null && !options.entrySet().isEmpty())
             body.add("options", options);
         if (labels)
