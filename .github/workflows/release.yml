@@ -1,0 +1,43 @@
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Build the Fiji plugin
+        working-directory: plugin
+        run: mvn -B verify
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: plugin/target/flimkit-fiji-bridge-*.jar
+          fail_on_unmatched_files: true
+          generate_release_notes: false
+          body: |
+            Direct image and ROI exchange between FLIMKit and Fiji.
+
+            Two things to install. The server, which the QuPath extension shares:
+
+            ```
+            pip install flimkit-bridge
+            ```
+
+            And the jar below, dropped into your Fiji `plugins` directory. Fiji 2.16 or newer, with its bundled JDK 21.
+
+            Nine commands appear under `Plugins > FLIMKit`, and `File > Open` handles `.ptu`, `.sdt`, `.photons` and the other formats FLIMKit reads.
