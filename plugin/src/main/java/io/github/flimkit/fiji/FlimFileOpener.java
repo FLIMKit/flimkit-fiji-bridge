@@ -35,9 +35,13 @@ public class FlimFileOpener extends AbstractIOPlugin<ImagePlus> {
         return path.substring(dot + 1).toLowerCase(Locale.ROOT);
     }
 
+    static boolean claims(String source) {
+        return EXTENSIONS.contains(extensionOf(source));
+    }
+
     @Override
     public boolean supportsOpen(String source) {
-        return EXTENSIONS.contains(extensionOf(source));
+        return claims(source);
     }
 
     @Override

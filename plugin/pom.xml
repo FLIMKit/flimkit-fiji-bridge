@@ -37,6 +37,21 @@
       <scope>provided</scope>
     </dependency>
     <dependency>
+      <groupId>net.imagej</groupId>
+      <artifactId>imagej-legacy</artifactId>
+      <version>2.0.3</version>
+      <scope>provided</scope>
+      <!-- Only the LegacyOpener interface is compiled against, and Fiji
+           supplies the whole stack at runtime, so none of the transitive
+           tree needs resolving here. -->
+      <exclusions>
+        <exclusion>
+          <groupId>*</groupId>
+          <artifactId>*</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
       <groupId>com.google.code.gson</groupId>
       <artifactId>gson</artifactId>
       <version>2.10.1</version>
