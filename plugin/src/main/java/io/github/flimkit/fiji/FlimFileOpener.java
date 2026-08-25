@@ -54,8 +54,19 @@ public class FlimFileOpener extends AbstractIOPlugin<ImagePlus> {
         var uri = source.getURI();
         if (uri == null)
             return "";
+        if ("file".equalsIgnoreCase(uri.getScheme())) {
+            try {
+                // stripDriveSlash again afterwards: off Windows the default
+                // provider reads "file:/C:/x" as the POSIX path "/C:/x", so the
+                // drive-letter case has to be handled on every platform for the
+                // behaviour to be testable anywhere.
+                return stripDriveSlash(java.nio.file.Paths.get(uri).toString());
+            } catch (RuntimeException ignored) {
+                // fall through to the textual handling below
+            }
+        }
         String path = uri.getPath();
-        return path == null ? decode(uri.toString()) : path;
+        return path == null ? decode(uri.toString()) : stripDriveSlash(path);
     }
 
     @Override
@@ -76,14 +87,32 @@ public class FlimFileOpener extends AbstractIOPlugin<ImagePlus> {
     }
 
     static String nameOf(String path) {
-        int slash = path.lastIndexOf('/');
+        int slash = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
         return slash < 0 ? path : path.substring(slash + 1);
+    }
+
+    static String stripDriveSlash(String path) {
+        // URI.getPath() on a Windows file URI yields "/C:/data/x.ptu". The
+        // leading slash is not part of the path and nothing can open it.
+        if (path.length() >= 3 && path.charAt(0) == '/'
+                && Character.isLetter(path.charAt(1)) && path.charAt(2) == ':')
+            return path.substring(1);
+        return path;
     }
 
     static String decode(String source) {
         String path = source;
-        if (path.startsWith("file:"))
-            path = path.substring("file:".length());
-        return java.net.URLDecoder.decode(path, java.nio.charset.StandardCharsets.UTF_8);
+        if (path.startsWith("file:")) {
+            try {
+                return stripDriveSlash(
+                        java.nio.file.Paths.get(java.net.URI.create(path)).toString());
+            } catch (RuntimeException ignored) {
+                path = path.substring("file:".length());
+                while (path.startsWith("//"))
+                    path = path.substring(1);
+            }
+        }
+        path = java.net.URLDecoder.decode(path, java.nio.charset.StandardCharsets.UTF_8);
+        return stripDriveSlash(path);
     }
 }
