@@ -4,8 +4,11 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
 import ij.IJ;
-import ij.gui.PolygonRoi;
 import ij.gui.Roi;
+import ij.plugin.RoiScaler;
+import ij.plugin.filter.ThresholdToSelection;
+import ij.process.ByteProcessor;
+import ij.process.ImageProcessor;
 import ij.plugin.frame.RoiManager;
 
 import javax.swing.BoxLayout;
@@ -232,6 +235,30 @@ public class PhasorWindow extends JPanel {
         }
     }
 
+    static Roi roiFromLabels(byte[] labels, int width, int height, int label,
+                             int binning) {
+        var mask = new ByteProcessor(width, height);
+        int found = 0;
+        for (int i = 0; i < labels.length && i < width * height; i++) {
+            if ((labels[i] & 0xFF) != label)
+                continue;
+            mask.set(i % width, i / width, 255);
+            found++;
+        }
+        if (found == 0)
+            return null;
+        mask.setThreshold(128, 255, ImageProcessor.NO_LUT_UPDATE);
+        Roi roi = new ThresholdToSelection().convert(mask);
+        if (roi == null)
+            return null;
+        if (binning > 1) {
+            var scaled = RoiScaler.scale(roi, binning, binning, false);
+            scaled.setLocation(roi.getBounds().x * binning, roi.getBounds().y * binning);
+            roi = scaled;
+        }
+        return roi;
+    }
+
     void createRois() throws Exception {
         var reply = JsonParser.parseString(client.phasorMask(
                 datasetId, PhasorPlot.requestBody(cursors, options, true)))
@@ -242,27 +269,19 @@ public class PhasorWindow extends JPanel {
         int width = reply.get("width").getAsInt();
         int height = reply.get("height").getAsInt();
         RoiManager manager = RoiManager.getRoiManager();
+        int added = 0;
         for (int label = 1; label <= cursors.size(); label++) {
-            var xs = new ArrayList<Float>();
-            var ys = new ArrayList<Float>();
-            for (int i = 0; i < labels.length && i < width * height; i++) {
-                if ((labels[i] & 0xFF) != label)
-                    continue;
-                xs.add((float) ((i % width) * binning));
-                ys.add((float) ((i / width) * binning));
-            }
-            if (xs.isEmpty())
+            Roi roi = roiFromLabels(labels, width, height, label, binning);
+            if (roi == null)
                 continue;
-            float[] px = new float[xs.size()];
-            float[] py = new float[ys.size()];
-            for (int i = 0; i < px.length; i++) {
-                px[i] = xs.get(i);
-                py[i] = ys.get(i);
-            }
-            var roi = new PolygonRoi(px, py, px.length, Roi.POINT);
             roi.setName("Phasor c" + label);
+            roi.setStrokeColor(COLOURS[(label - 1) % COLOURS.length]);
             manager.addRoi(roi);
+            added++;
         }
+        IJ.showStatus(added == 0
+                ? "No pixels fell inside the cursors."
+                : "Added " + added + " phasor region(s) to the ROI Manager.");
     }
 
     public JFrame open() throws Exception {

@@ -12,6 +12,8 @@ public class FitSettings {
     private FitSettings() {}
 
     static boolean appliesTo(JsonObject entry, String mode) {
+        if (!entry.has("applies_to") || !entry.get("applies_to").isJsonArray())
+            return true;
         for (var applies : entry.getAsJsonArray("applies_to")) {
             if (applies.getAsString().equals(mode))
                 return true;
@@ -39,7 +41,7 @@ public class FitSettings {
                     for (var choice : entry.getAsJsonArray("choices"))
                         choices.add(choice.getAsString());
                     dialog.addChoice(label, choices.toArray(new String[0]),
-                            values.get(key).getAsString());
+                            values.get(key).getAsJsonPrimitive().getAsString());
                 }
                 case "path" -> dialog.addStringField(label, values.get(key).getAsString(), 30);
                 default -> {

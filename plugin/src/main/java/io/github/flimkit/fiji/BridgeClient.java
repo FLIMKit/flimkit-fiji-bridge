@@ -178,5 +178,10 @@ public class BridgeClient {
                 .build(), "POST pipeline");
     }
 
+    public String pipelineDefaults() throws IOException, InterruptedException {
+        return text(request("/v1/pipeline/defaults").GET().build(),
+                "GET pipeline defaults");
+    }
+
     public record Image(byte[] tiff, String unit) {}
 }
