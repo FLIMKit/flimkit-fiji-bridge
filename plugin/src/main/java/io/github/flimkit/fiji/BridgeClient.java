@@ -11,7 +11,7 @@ import java.time.Duration;
 public class BridgeClient {
 
     public static final int PROTOCOL_VERSION = 1;
-    public static final String PLUGIN_VERSION = "0.3.0";
+    public static final String PLUGIN_VERSION = "0.3.1";
 
     private final HttpClient client = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))

@@ -6,7 +6,7 @@
 
   <groupId>io.github.flimkit</groupId>
   <artifactId>flimkit-fiji-bridge</artifactId>
-  <version>0.3.0</version>
+  <version>0.3.1</version>
   <packaging>jar</packaging>
   <name>FLIMKit Fiji bridge</name>
   <description>Direct image and ROI exchange between FLIMKit and Fiji</description>
