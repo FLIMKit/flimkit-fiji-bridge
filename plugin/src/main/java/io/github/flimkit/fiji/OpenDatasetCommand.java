@@ -33,8 +33,9 @@ public class OpenDatasetCommand implements Command {
         try {
             var client = ConnectCommand.connect();
             String id = open(client, file.getAbsolutePath());
-            var intensity = FetchImagesCommand.fetch(
-                    client, "intensity", "FLIMKit intensity");
+            var intensity = FetchImagesCommand.fetchPlane(
+                    client, id, "intensity",
+                    "FLIMKit " + FlimFileOpener.nameOf(file.getAbsolutePath()));
             intensity.show();
             IJ.showStatus("FLIMKit opened " + file.getName() + " as " + id);
         } catch (Exception e) {
