@@ -4,6 +4,8 @@
 
 Direct image and ROI exchange between [FLIMKit](https://github.com/FLIMKit/FLIMKit) and [Fiji](https://fiji.sc/).
 
+Available from the **FLIMKit-Bridge** Fiji update site.
+
 ## Installing
 
 Two things, and the plugin does nothing without both.
@@ -14,12 +16,17 @@ The server, which the QuPath extension shares:
 pip install flimkit-bridge
 ```
 
-The plugin, either from the Fiji updater or by hand:
+The plugin, from the update site:
 
-- **Update site.** `Help > Update... > Manage update sites`, enable **FLIMKit-Bridge**.
-- **By hand.** Drop `flimkit-fiji-bridge-<version>.jar` from the
-  [latest release](https://github.com/FLIMKit/flimkit-fiji-bridge/releases) into your
-  Fiji `plugins` directory.
+1. `Help > Update...`, then `Manage update sites`.
+2. Tick **FLIMKit-Bridge**. If it is not in the list yet, `Add unlisted site` with
+   name `FLIMKit-Bridge` and URL `https://sites.imagej.net/FLIMKit-Bridge/`.
+3. `Apply changes`, then restart Fiji.
+
+The updater keeps it current, so this is the route to prefer. Failing that, drop
+`flimkit-fiji-bridge-<version>.jar` from the
+[latest release](https://github.com/FLIMKit/flimkit-fiji-bridge/releases) into your Fiji
+`plugins` directory by hand.
 
 Fiji 2.16 or newer, with its bundled JDK 21.
 
