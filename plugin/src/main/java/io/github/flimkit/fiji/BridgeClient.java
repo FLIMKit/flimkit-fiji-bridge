@@ -123,5 +123,53 @@ public class BridgeClient {
         return response.body();
     }
 
+    public String fitPixels(String datasetId, String body)
+            throws IOException, InterruptedException {
+        return text(request("/v1/datasets/" + datasetId + "/fit/pixels")
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8))
+                .build(), "POST fit/pixels");
+    }
+
+    public String jobStatus(String jobId) throws IOException, InterruptedException {
+        return text(request("/v1/jobs/" + jobId).GET().build(), "GET job");
+    }
+
+    public String jobResult(String jobId) throws IOException, InterruptedException {
+        return text(request("/v1/jobs/" + jobId + "?result").GET().build(),
+                "GET job result");
+    }
+
+    public void cancelJob(String jobId) throws IOException, InterruptedException {
+        client.send(request("/v1/jobs/" + jobId).DELETE().build(),
+                HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+    }
+
+    public String phasorSummary(String datasetId, String options)
+            throws IOException, InterruptedException {
+        return text(request("/v1/datasets/" + datasetId + "/phasor"
+                + (options == null || options.isEmpty() ? "" : "?" + options))
+                .GET().build(), "GET phasor");
+    }
+
+    public String phasorPoints(String datasetId, int bins, String options)
+            throws IOException, InterruptedException {
+        return text(request("/v1/datasets/" + datasetId + "/phasor/points?bins=" + bins
+                + (options == null || options.isEmpty() ? "" : "&" + options))
+                .GET().build(), "GET phasor points");
+    }
+
+    public String phasorMask(String datasetId, String body)
+            throws IOException, InterruptedException {
+        return text(request("/v1/datasets/" + datasetId + "/phasor/mask")
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8))
+                .build(), "POST phasor mask");
+    }
+
+    public String phasorSettings() throws IOException, InterruptedException {
+        return text(request("/v1/phasor/settings").GET().build(), "GET phasor settings");
+    }
+
     public record Image(byte[] tiff, String unit) {}
 }

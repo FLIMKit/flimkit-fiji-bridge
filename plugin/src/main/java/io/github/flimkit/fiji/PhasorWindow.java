@@ -1,0 +1,321 @@
+package io.github.flimkit.fiji;
+
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+
+import ij.IJ;
+import ij.gui.PolygonRoi;
+import ij.gui.Roi;
+import ij.plugin.frame.RoiManager;
+
+import javax.swing.BoxLayout;
+import javax.swing.DefaultListModel;
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JList;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JToggleButton;
+
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.util.ArrayList;
+import java.util.List;
+
+public class PhasorWindow extends JPanel {
+
+    private static final int BINS = 256;
+    private static final Color[] COLOURS = {
+        new Color(0xFF6B6B), new Color(0x4ECDC4), new Color(0xFFE66D),
+        new Color(0x95E1D3), new Color(0xC7CEEA), new Color(0xFF8C42),
+    };
+
+    private final BridgeClient client;
+    private final String datasetId;
+    private final List<PhasorPlot.Cursor> cursors = new ArrayList<>();
+    private final DefaultListModel<String> lines = new DefaultListModel<>();
+    private JsonObject options = new JsonObject();
+
+    private int[] counts = new int[0];
+    private int maxCount = 1;
+    private List<double[]> outline;
+    private boolean drawing;
+    private int dragging = -1;
+
+    public PhasorWindow(BridgeClient client, String datasetId) {
+        this.client = client;
+        this.datasetId = datasetId;
+        setPreferredSize(new Dimension(520, 380));
+        var mouse = new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent e) {
+                if (drawing) {
+                    outline = new ArrayList<>();
+                    outline.add(new double[] {e.getX(), e.getY()});
+                    return;
+                }
+                dragging = nearest(e.getX(), e.getY());
+                if (dragging < 0 && cursors.size() < COLOURS.length) {
+                    cursors.add(PhasorPlot.Cursor.ellipse(
+                            "c" + (cursors.size() + 1), toG(e.getX()), toS(e.getY()), 0.05));
+                    dragging = cursors.size() - 1;
+                }
+                refresh();
+            }
+
+            @Override
+            public void mouseDragged(MouseEvent e) {
+                if (outline != null) {
+                    double[] last = outline.get(outline.size() - 1);
+                    if (Math.hypot(e.getX() - last[0], e.getY() - last[1]) >= 3.0)
+                        outline.add(new double[] {e.getX(), e.getY()});
+                    repaint();
+                    return;
+                }
+                if (dragging >= 0) {
+                    var was = cursors.get(dragging);
+                    cursors.set(dragging, PhasorPlot.Cursor.ellipse(
+                            was.id(), toG(e.getX()), toS(e.getY()), was.radius()));
+                    repaint();
+                }
+            }
+
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                if (outline != null) {
+                    finishOutline();
+                    return;
+                }
+                dragging = -1;
+                refresh();
+            }
+        };
+        addMouseListener(mouse);
+        addMouseMotionListener(mouse);
+    }
+
+    void setDrawing(boolean on) {
+        drawing = on;
+    }
+
+    private void finishOutline() {
+        var traced = outline;
+        outline = null;
+        if (traced.size() < 3 || cursors.size() >= COLOURS.length) {
+            IJ.showStatus("That outline had fewer than three points.");
+            refresh();
+            return;
+        }
+        var vertices = new ArrayList<double[]>();
+        for (var point : traced)
+            vertices.add(new double[] {toG(point[0]), toS(point[1])});
+        cursors.add(PhasorPlot.Cursor.polygon("c" + (cursors.size() + 1), vertices));
+        drawing = false;
+        refresh();
+    }
+
+    private double toX(double g) {
+        return (g - PhasorPlot.G_MIN) / (PhasorPlot.G_MAX - PhasorPlot.G_MIN) * getWidth();
+    }
+
+    private double toY(double s) {
+        return getHeight()
+                - (s - PhasorPlot.S_MIN) / (PhasorPlot.S_MAX - PhasorPlot.S_MIN) * getHeight();
+    }
+
+    private double toG(double x) {
+        return PhasorPlot.G_MIN + x / getWidth() * (PhasorPlot.G_MAX - PhasorPlot.G_MIN);
+    }
+
+    private double toS(double y) {
+        return PhasorPlot.S_MIN
+                + (getHeight() - y) / getHeight() * (PhasorPlot.S_MAX - PhasorPlot.S_MIN);
+    }
+
+    private int nearest(double x, double y) {
+        for (int i = 0; i < cursors.size(); i++) {
+            var cursor = cursors.get(i);
+            if (cursor.vertices() != null)
+                continue;
+            if (Math.hypot(toX(cursor.g()) - x, toY(cursor.s()) - y) < 12)
+                return i;
+        }
+        return -1;
+    }
+
+    void loadDensity() throws Exception {
+        var payload = JsonParser.parseString(client.phasorPoints(
+                datasetId, BINS, PhasorPlot.optionsQuery(options))).getAsJsonObject();
+        counts = PhasorPlot.decodeCounts(payload.get("counts").getAsString());
+        maxCount = Math.max(1, payload.get("max_count").getAsInt());
+    }
+
+    void refresh() {
+        repaint();
+        lines.clear();
+        if (cursors.isEmpty())
+            return;
+        try {
+            var reply = JsonParser.parseString(client.phasorMask(
+                    datasetId, PhasorPlot.requestBody(cursors, options, false)))
+                    .getAsJsonObject();
+            for (var element : reply.getAsJsonArray("cursors"))
+                lines.addElement(PhasorPlot.describe(element.getAsJsonObject()));
+        } catch (Exception e) {
+            IJ.showStatus("Could not count phasor pixels: " + e.getMessage());
+        }
+    }
+
+    @Override
+    protected void paintComponent(Graphics graphics) {
+        super.paintComponent(graphics);
+        Graphics2D g = (Graphics2D) graphics;
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+                RenderingHints.VALUE_ANTIALIAS_ON);
+        g.setColor(new Color(0x101418));
+        g.fillRect(0, 0, getWidth(), getHeight());
+        double cellW = getWidth() / (double) BINS;
+        double cellH = getHeight() / (double) BINS;
+        double logMax = Math.log1p(maxCount);
+        for (int row = 0; row < BINS && counts.length == BINS * BINS; row++) {
+            for (int col = 0; col < BINS; col++) {
+                int count = counts[row * BINS + col];
+                if (count == 0)
+                    continue;
+                float level = (float) (Math.log1p(count) / logMax);
+                g.setColor(Color.getHSBColor((240 - 240 * level) / 360f, 0.85f,
+                        0.25f + 0.75f * level));
+                g.fillRect((int) (col * cellW),
+                        (int) (getHeight() - (row + 1) * cellH),
+                        (int) Math.ceil(cellW), (int) Math.ceil(cellH));
+            }
+        }
+        g.setColor(new Color(0x8899AA));
+        double previousX = toX(0), previousY = toY(0);
+        for (int i = 1; i <= 180; i++) {
+            double angle = Math.PI * i / 180.0;
+            double x = toX(0.5 + 0.5 * Math.cos(angle));
+            double y = toY(0.5 * Math.sin(angle));
+            g.drawLine((int) previousX, (int) previousY, (int) x, (int) y);
+            previousX = x;
+            previousY = y;
+        }
+        for (int i = 0; i < cursors.size(); i++) {
+            var cursor = cursors.get(i);
+            g.setColor(COLOURS[i % COLOURS.length]);
+            if (cursor.vertices() != null) {
+                var vertices = cursor.vertices();
+                for (int p = 0; p < vertices.size(); p++) {
+                    var a = vertices.get(p);
+                    var b = vertices.get((p + 1) % vertices.size());
+                    g.drawLine((int) toX(a[0]), (int) toY(a[1]),
+                            (int) toX(b[0]), (int) toY(b[1]));
+                }
+                continue;
+            }
+            int rx = (int) (cursor.radius() / (PhasorPlot.G_MAX - PhasorPlot.G_MIN) * getWidth());
+            int ry = (int) (cursor.radius() / (PhasorPlot.S_MAX - PhasorPlot.S_MIN) * getHeight());
+            g.drawOval((int) toX(cursor.g()) - rx, (int) toY(cursor.s()) - ry, rx * 2, ry * 2);
+        }
+        if (outline != null && outline.size() > 1) {
+            g.setColor(COLOURS[cursors.size() % COLOURS.length]);
+            for (int i = 1; i < outline.size(); i++)
+                g.drawLine((int) outline.get(i - 1)[0], (int) outline.get(i - 1)[1],
+                        (int) outline.get(i)[0], (int) outline.get(i)[1]);
+        }
+    }
+
+    void createRois() throws Exception {
+        var reply = JsonParser.parseString(client.phasorMask(
+                datasetId, PhasorPlot.requestBody(cursors, options, true)))
+                .getAsJsonObject();
+        int binning = reply.get("binning").isJsonNull() ? 1 : reply.get("binning").getAsInt();
+        byte[] labels = java.util.Base64.getDecoder().decode(
+                reply.get("labels").getAsString());
+        int width = reply.get("width").getAsInt();
+        int height = reply.get("height").getAsInt();
+        RoiManager manager = RoiManager.getRoiManager();
+        for (int label = 1; label <= cursors.size(); label++) {
+            var xs = new ArrayList<Float>();
+            var ys = new ArrayList<Float>();
+            for (int i = 0; i < labels.length && i < width * height; i++) {
+                if ((labels[i] & 0xFF) != label)
+                    continue;
+                xs.add((float) ((i % width) * binning));
+                ys.add((float) ((i / width) * binning));
+            }
+            if (xs.isEmpty())
+                continue;
+            float[] px = new float[xs.size()];
+            float[] py = new float[ys.size()];
+            for (int i = 0; i < px.length; i++) {
+                px[i] = xs.get(i);
+                py[i] = ys.get(i);
+            }
+            var roi = new PolygonRoi(px, py, px.length, Roi.POINT);
+            roi.setName("Phasor c" + label);
+            manager.addRoi(roi);
+        }
+    }
+
+    public JFrame open() throws Exception {
+        loadDensity();
+        var frame = new JFrame("FLIMKit phasor");
+        var root = new JPanel(new BorderLayout());
+        root.add(this, BorderLayout.CENTER);
+        var side = new JPanel();
+        side.setLayout(new BoxLayout(side, BoxLayout.Y_AXIS));
+        var summary = JsonParser.parseString(client.phasorSummary(
+                datasetId, PhasorPlot.optionsQuery(options))).getAsJsonObject();
+        side.add(new JLabel(String.format("%.2f MHz",
+                summary.get("frequency_mhz").getAsDouble())));
+        side.add(new JScrollPane(new JList<>(lines)));
+        var draw = new JToggleButton("Draw region");
+        draw.addActionListener(e -> setDrawing(draw.isSelected()));
+        side.add(draw);
+        var settings = new JButton("Settings...");
+        settings.addActionListener(e -> {
+            try {
+                var defaults = JsonParser.parseString(
+                        client.phasorSettings()).getAsJsonObject();
+                var chosen = FitSettings.prompt(defaults, "phasor", "FLIMKit phasor");
+                if (chosen == null)
+                    return;
+                options = chosen;
+                loadDensity();
+                refresh();
+            } catch (Exception ex) {
+                IJ.error("FLIMKit phasor", ex.getMessage());
+            }
+        });
+        side.add(settings);
+        var remove = new JButton("Remove last");
+        remove.addActionListener(e -> {
+            if (!cursors.isEmpty())
+                cursors.remove(cursors.size() - 1);
+            refresh();
+        });
+        side.add(remove);
+        var create = new JButton("Add to ROI Manager");
+        create.addActionListener(e -> {
+            try {
+                createRois();
+            } catch (Exception ex) {
+                IJ.error("FLIMKit phasor", ex.getMessage());
+            }
+        });
+        side.add(create);
+        root.add(side, BorderLayout.EAST);
+        frame.setContentPane(root);
+        frame.pack();
+        frame.setVisible(true);
+        return frame;
+    }
+}
