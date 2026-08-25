@@ -82,5 +82,46 @@ public class BridgeClient {
                 .build(), "POST ROIs");
     }
 
+    public String fitDefaults() throws IOException, InterruptedException {
+        return text(request("/v1/fit/defaults").GET().build(), "GET fit defaults");
+    }
+
+    public String fitRois(String datasetId, String body)
+            throws IOException, InterruptedException {
+        return text(request("/v1/datasets/" + datasetId + "/fit/roi")
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8))
+                .build(), "POST fit/roi");
+    }
+
+    public String planeList(String datasetId) throws IOException, InterruptedException {
+        return text(request("/v1/datasets/" + datasetId + "/planes").GET().build(),
+                "GET planes");
+    }
+
+    public Image plane(String datasetId, String name)
+            throws IOException, InterruptedException {
+        var response = client.send(
+                request("/v1/datasets/" + datasetId + "/planes/" + name + ".tif")
+                        .GET().build(),
+                HttpResponse.BodyHandlers.ofByteArray());
+        if (response.statusCode() != 200)
+            throw new IOException("GET plane " + name + " returned "
+                    + response.statusCode());
+        return new Image(response.body(),
+                response.headers().firstValue("X-FLIMKit-Value-Unit").orElse(""));
+    }
+
+    public byte[] planes(String datasetId, String names)
+            throws IOException, InterruptedException {
+        var response = client.send(
+                request("/v1/datasets/" + datasetId + "/planes/stack.tif?planes=" + names)
+                        .GET().build(),
+                HttpResponse.BodyHandlers.ofByteArray());
+        if (response.statusCode() != 200)
+            throw new IOException("GET planes returned " + response.statusCode());
+        return response.body();
+    }
+
     public record Image(byte[] tiff, String unit) {}
 }
