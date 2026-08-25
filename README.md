@@ -4,17 +4,54 @@
 
 Direct image and ROI exchange between [FLIMKit](https://github.com/FLIMKit/FLIMKit) and [Fiji](https://fiji.sc/).
 
-## Current status
+## Installing
 
-This add-on connects the bridge server to FLIMKit's public image and ROI bindings on `main`.
+Two things, and the plugin does nothing without both.
 
-From FLIMKit, `Tools > Fiji Bridge...` now starts an authenticated loopback server and shows its address and pairing token. The server can:
+The server, which the QuPath extension shares:
 
-1. fetch copies of the current fitted intensity and lifetime images as `float32` TIFF, with pixel-value units (`photons` or `ns`);
-2. export the current FLIMKit Regions table as GeoJSON;
-3. import a Fiji GeoJSON `FeatureCollection` into the current FLIMKit Regions table.
+```bash
+pip install flimkit-bridge
+```
 
-Communication stays on `127.0.0.1`. Image and ROI endpoints require the generated bearer token. The status endpoint is unauthenticated and reports only the protocol name and version. The server refuses non-loopback binding. Image reads use a 10-second timeout. ROI imports wait for FLIMKit to finish because the UI-thread mutation cannot be cancelled safely; this prevents a timeout from reporting failure while an import may still complete. The current Fiji script remains a headless transport check; a normal Fiji ROI Manager interface is still future work.
+The plugin, either from the Fiji updater or by hand:
+
+- **Update site.** `Help > Update... > Manage update sites`, enable **FLIMKit-Bridge**.
+- **By hand.** Drop `flimkit-fiji-bridge-<version>.jar` from the
+  [latest release](https://github.com/FLIMKit/flimkit-fiji-bridge/releases) into your
+  Fiji `plugins` directory.
+
+Fiji 2.16 or newer, with its bundled JDK 21.
+
+## What it does
+
+Nine commands appear under `Plugins > FLIMKit`:
+
+| Command | Purpose |
+|---|---|
+| Connect | Pair with a running FLIMKit or headless `flimkit-bridge` |
+| Open FLIM file... | Open `.ptu`, `.sdt`, `.photons` and the other formats FLIMKit reads |
+| Fetch FLIMKit images | Pull the current intensity and lifetime images, with their units |
+| Fetch ROIs from FLIMKit | Load the FLIMKit Regions table into Fiji's ROI Manager |
+| Send ROIs to FLIMKit | Push the ROI Manager contents back as GeoJSON |
+| Fit per-pixel lifetimes... | Run a per-pixel fit and return the maps |
+| Fit ROI decays... | Fit the decay summed over each ROI |
+| Phasor plot... | Open an interactive phasor window |
+| Stitch and fit a mosaic... | Stitch a multi-position acquisition and fit it |
+
+`File > Open` also handles the FLIM formats directly.
+
+Communication stays on `127.0.0.1`. Image and ROI endpoints require the generated bearer
+token. The status endpoint is unauthenticated and reports only the protocol name and
+version. The server refuses non-loopback binding. Image reads use a 10-second timeout.
+ROI imports wait for FLIMKit to finish, because the UI-thread mutation cannot be
+cancelled safely; this prevents a timeout from reporting failure while an import may
+still complete.
+
+Pairing is through `~/.flimkit/bridge.json`, written when FLIMKit starts or when
+`flimkit-bridge` is run headless. In FLIMKit, `Tools > FLIMKit Bridge...` starts the
+server and shows its address and pairing token. There is one such button rather than
+one per client.
 
 ## Where the server lives
 
@@ -24,20 +61,29 @@ This add-on no longer carries a server, and it is not a Python package. It uses 
 pip install flimkit-bridge
 ```
 
-That is the only thing to install on the Python side. What this repository holds is the Fiji client and, once it exists, the plugin jar.
+That is the only thing to install on the Python side. What this repository holds is the Fiji client: the plugin jar under `plugin/`, and the
+groovy transport scripts the tests drive.
 
 Pairing is through `~/.flimkit/bridge.json`, written when FLIMKit starts or when `flimkit-bridge` is run headless. There is one `Tools > FLIMKit Bridge...` button in FLIMKit now rather than one per client.
 
 ## Requirements
 
+- Fiji 2.16 or newer, with its bundled JDK 21.
 - Python 3.12 or newer, matching FLIMKit's requirement.
 - A FLIMKit build containing the public image and ROI bindings merged in [FLIMKit PR #52](https://github.com/FLIMKit/FLIMKit/pull/52).
-- A working Fiji installation.
 - `pytest`, NumPy, and tifffile for the bridge tests.
 
-Use a recent Fiji download with its bundled JDK. The bridge tests have been verified with bundled JDK 21 Fiji installations on Linux x86-64 and macOS ARM64.
+The jar is compiled to Java 21 bytecode and carries no native libraries, so one build runs
+on Linux, macOS and Windows alike. Java 21 is a hard floor: an older Fiji fails to load
+the plugin with `UnsupportedClassVersionError`, and the message does not say to upgrade
+Fiji. `BridgeClient` uses `java.net.http.HttpClient`, which is Java 11 and newer.
 
-The Fiji bridge client uses `java.net.HttpURLConnection`, which is available on Java 8. It does not use the Java 11-only `java.net.http.HttpClient` API. An old Fiji installation may still fail before the bridge script starts if Fiji's own JAR files require a newer Java runtime.
+Paths and text are platform-neutral throughout: the discovery file is resolved with
+`Paths.get(System.getProperty("user.home"), ".flimkit")`, and every read and write names
+`StandardCharsets.UTF_8` rather than inheriting the platform default.
+
+The plugin jar has been verified on macOS ARM64. Linux and Windows are untested, so
+report anything that looks platform-specific.
 
 ## Test the bridge on macOS ARM64
 
@@ -63,11 +109,7 @@ FIJI_PATH='/Applications/Fiji.app/Contents/MacOS/fiji-macos-arm64' \
 python -m pytest -q
 ```
 
-Expected result:
-
-```text
-29 passed
-```
+The live Fiji test is skipped unless `FIJI_PATH` is set.
 
 The test is headless, so Fiji does not open a visible image window. Success means a real Fiji process fetched both TIFF images, checked their values, and sent the GeoJSON ROI back to Python.
 
@@ -95,53 +137,55 @@ The older macOS launcher below may select a legacy Java runtime and is not recom
 
 ## Old Fiji troubleshooting
 
-If the old launcher reports an error such as:
+If the plugin does not appear under `Plugins > FLIMKit`, or the launcher reports:
 
 ```text
 UnsupportedClassVersionError
 ```
 
-or:
+the Fiji installation is running a JDK older than 21. Install a current Fiji release with
+its bundled JDK and use its current platform launcher.
 
 ```text
 Module javafx.base not found
 ```
 
-install a current Fiji release with its bundled JDK and use its current platform launcher. These failures can happen while Fiji itself starts, before bridge code can display an error.
+is the same cause. Both can happen while Fiji itself starts, before plugin code can
+display an error.
 
-If the bridge script starts with a Java runtime older than Java 8, it stops with:
+## What the plugin talks to
 
-```text
-Fiji Bridge requires Java 8 or newer. Please download a current Fiji release with its bundled JDK.
-```
+`flimkit-bridge` answers these; the plugin uses all of them:
 
-## What the current bridge runs
+| Path | Purpose |
+|---|---|
+| `/v1/status` | Report protocol name and version, unauthenticated |
+| `/v1/datasets`, `/v1/datasets/...` | List and open datasets |
+| `/v1/images/...` | Fetch intensity and lifetime images as `float32` TIFF |
+| `/v1/rois` | Export and import the Regions table as GeoJSON |
+| `/v1/fit/defaults` | Fetch fit settings to prefill the dialogs |
+| `/v1/jobs/...` | Poll long-running fits |
+| `/v1/phasor/settings` | Phasor window configuration |
+| `/v1/pipeline`, `/v1/pipeline/defaults` | Stitch-and-fit a mosaic |
 
-The Python side exposes five local endpoints:
+Image IDs use an explicit allowlist. URL values are never passed to `getattr`. Each TIFF
+response includes `X-FLIMKit-Value-Unit`; Fiji stores that value in the image
+calibration.
 
-| Method | Path | Purpose |
-|---|---|---|
-| `GET` | `/v1/status` | Report protocol version |
-| `GET` | `/v1/images/intensity.tif` | Return the current FLIMKit intensity image |
-| `GET` | `/v1/images/lifetime.tif` | Return the current FLIMKit lifetime image |
-| `GET` | `/v1/rois` | Export the current FLIMKit ROIs as GeoJSON |
-| `POST` | `/v1/rois` | Import a GeoJSON `FeatureCollection` into FLIMKit |
+The image scope is fitted lifetime and photon-count intensity only. Raw per-pixel decay
+histograms are not transferred. A raw-decay binding would need a separate data and
+metadata contract.
 
-Image IDs use an explicit allowlist. URL values are never passed to `getattr`. Each TIFF response includes `X-FLIMKit-Value-Unit`; Fiji stores that value in the image calibration. The production data source calls `get_current_images(app)`, `export_rois_geojson(app)`, and `import_rois_geojson(app, payload)` from `flimkit.plugins`.
-
-The image scope is fitted lifetime and photon-count intensity only. Raw per-pixel decay histograms are not transferred. A raw-decay binding would need a separate data and metadata contract.
-
-The Fiji script is:
-
-```text
-fiji/FijiBridge.groovy
-```
-
-The Python bridge server is:
+The plugin source is:
 
 ```text
-flimkit_fiji_bridge/server.py
+plugin/src/main/java/io/github/flimkit/fiji/
 ```
+
+The groovy scripts under `fiji/` and `plugin/` are transport-level checks the Python
+tests drive, not the user-facing plugin.
+
+The server is not in this repository. It is [flimkit-bridge](https://github.com/FLIMKit/flimkit-bridge).
 
 ## Run without Fiji
 
@@ -157,25 +201,29 @@ The live test skips unless `FIJI_PATH` is set.
 
 The bridge does not yet:
 
-- use Fiji's ROI Manager;
-- provide normal Fiji buttons for fetching images and sending or receiving ROIs;
 - perform image registration;
 - define the final production protocol.
 
-Registration will remain a Fiji-side operation. The planned Fiji interface will reject mismatched image dimensions rather than silently rescale ROI coordinates.
-
-## Next implementation steps
-
-1. Turn the current Fiji script into a small command with a normal user interface.
-2. Add bidirectional Fiji ROI Manager conversion.
-3. Test registered ROI transfer with Fiji's existing registration tools.
+Registration will remain a Fiji-side operation. The Fiji interface rejects mismatched
+image dimensions rather than silently rescaling ROI coordinates.
 
 ## Development
 
+The plugin:
+
+```bash
+cd plugin
+mvn -B verify          # 26 tests
+```
+
+The transport tests:
+
 ```bash
 python -m pip install pytest numpy
-python -m pytest -q
+python -m pytest -q    # add FIJI_PATH to include the live Fiji test
 ```
+
+A tag matching `v*` builds the jar and attaches it to a GitHub release.
 
 Please add a test for each behavior change. Keep module imports side-effect free so FLIMKit can inspect the add-on on headless systems.
 
