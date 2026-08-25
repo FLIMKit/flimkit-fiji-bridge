@@ -23,7 +23,10 @@ public class FetchImagesCommand implements Command {
 
     static ImagePlus fetchPlane(BridgeClient client, String datasetId, String name,
                                 String title) throws Exception {
-        return build(client.plane(datasetId, name), name, title, client.baseUrl());
+        ImagePlus image = build(client.plane(datasetId, name), name, title,
+                client.baseUrl());
+        Session.tag(image, datasetId);
+        return image;
     }
 
     static ImagePlus fetch(BridgeClient client, String imageId, String title)
