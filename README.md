@@ -26,7 +26,8 @@ The plugin, from the update site:
 The updater keeps it current, so this is the route to prefer. Failing that, drop
 `flimkit-fiji-bridge-<version>.jar` from the
 [latest release](https://github.com/FLIMKit/flimkit-fiji-bridge/releases) into your Fiji
-`plugins` directory by hand.
+`plugins/jars/` directory by hand. That is where the update site installs it, so the two
+routes do not leave you with two copies.
 
 Fiji 2.16 or newer, with its bundled JDK 21.
 
