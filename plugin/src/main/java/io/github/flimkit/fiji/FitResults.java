@@ -6,7 +6,9 @@ import com.google.gson.JsonObject;
 import ij.measure.ResultsTable;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 public class FitResults {
 
@@ -49,9 +51,18 @@ public class FitResults {
     }
 
     public static ResultsTable summaryTable(JsonObject summary, String label) {
-        var table = new ResultsTable();
+        return addSummary(new ResultsTable(), summary, label);
+    }
+
+    public static ResultsTable addSummary(ResultsTable table, JsonObject summary,
+                                          String label) {
+        table.setNaNEmptyCells(true);
+        var before = columnsOf(table);
         table.incrementCounter();
         table.addLabel(label);
+        int row = table.size() - 1;
+        for (String column : before)
+            table.setValue(column, row, Double.NaN);
         for (var key : summary.keySet()) {
             var value = summary.get(key);
             if (value == null || value.isJsonNull())
@@ -70,7 +81,23 @@ public class FitResults {
             else
                 table.addValue(key, primitive.getAsString());
         }
+        for (String column : columnsOf(table)) {
+            if (before.contains(column))
+                continue;
+            for (int earlier = 0; earlier < row; earlier++)
+                table.setValue(column, earlier, Double.NaN);
+        }
         return table;
+    }
+
+    private static Set<String> columnsOf(ResultsTable table) {
+        var found = new LinkedHashSet<String>();
+        for (int column = 0; column <= table.getLastColumn(); column++) {
+            String heading = table.getColumnHeading(column);
+            if (heading != null && !heading.isEmpty())
+                found.add(heading);
+        }
+        return found;
     }
 
     public static List<String> errors(JsonObject payload) {

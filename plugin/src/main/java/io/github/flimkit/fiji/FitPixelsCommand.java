@@ -5,6 +5,7 @@ import com.google.gson.JsonParser;
 
 import ij.ImagePlus;
 import ij.io.Opener;
+import ij.measure.ResultsTable;
 
 import org.scijava.command.Command;
 import org.scijava.plugin.Parameter;
@@ -34,15 +35,32 @@ public class FitPixelsCommand implements Command {
 
     static ImagePlus stack(BridgeClient client, String datasetId, List<String> names)
             throws Exception {
+        String title = "FLIMKit lifetime maps "
+                + FlimFileOpener.nameOf(String.valueOf(Session.datasetPath(datasetId)));
         byte[] tiff = client.planes(datasetId, String.join(",", names));
         ImagePlus image = new Opener().openTiff(
-                new ByteArrayInputStream(tiff), "FLIMKit lifetime maps");
+                new ByteArrayInputStream(tiff), title);
         if (image == null)
             throw new IllegalStateException("Fiji could not decode the lifetime maps");
         for (int i = 0; i < names.size() && i < image.getStackSize(); i++)
             image.getStack().setSliceLabel(names.get(i), i + 1);
         image.setProperty(FetchImagesCommand.SOURCE_PROPERTY, client.baseUrl());
+        Session.tag(image, datasetId);
         return image;
+    }
+
+    static final String SUMMARY_TITLE = "FLIMKit per-pixel summary";
+
+    static String fileOf(String datasetId) {
+        String path = Session.datasetPath(datasetId);
+        return path == null ? datasetId : FlimFileOpener.nameOf(path);
+    }
+
+    static void addToSummary(JsonObject global, String label) {
+        var open = ResultsTable.getResultsTable(SUMMARY_TITLE);
+        var table = open == null ? new ResultsTable() : open;
+        FitResults.addSummary(table, global, label);
+        table.show(SUMMARY_TITLE);
     }
 
     @Override
@@ -67,8 +85,7 @@ public class FitPixelsCommand implements Command {
                 names = List.of("tau_mean_amp", "tau_mean_int");
             stack(client, id, names).show();
             if (result.has("global") && result.get("global").isJsonObject())
-                FitResults.summaryTable(result.getAsJsonObject("global"),
-                        "summed fit").show("FLIMKit per-pixel summary");
+                addToSummary(result.getAsJsonObject("global"), fileOf(id));
         } catch (Exception e) {
             ui.showDialog("Could not fit per-pixel.\n\n" + e.getMessage(),
                     "FLIMKit bridge");
