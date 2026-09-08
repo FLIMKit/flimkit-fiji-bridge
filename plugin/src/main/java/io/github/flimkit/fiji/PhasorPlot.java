@@ -105,8 +105,42 @@ public class PhasorPlot {
         return String.join("&", parts);
     }
 
-    public record Cursor(String id, double g, double s, double radius,
-                         List<double[]> vertices) {
+    public static final class Cursor {
+
+        private final String id;
+        private final double g;
+        private final double s;
+        private final double radius;
+        private final List<double[]> vertices;
+
+        public Cursor(String id, double g, double s, double radius,
+                      List<double[]> vertices) {
+            this.id = id;
+            this.g = g;
+            this.s = s;
+            this.radius = radius;
+            this.vertices = vertices;
+        }
+
+        public String id() {
+            return id;
+        }
+
+        public double g() {
+            return g;
+        }
+
+        public double s() {
+            return s;
+        }
+
+        public double radius() {
+            return radius;
+        }
+
+        public List<double[]> vertices() {
+            return vertices;
+        }
 
         public static Cursor ellipse(String id, double g, double s, double radius) {
             return new Cursor(id, g, s, radius, null);
