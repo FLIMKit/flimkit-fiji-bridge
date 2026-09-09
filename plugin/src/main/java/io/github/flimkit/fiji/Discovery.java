@@ -65,7 +65,29 @@ public class Discovery {
         return ProcessHandle.of(pid).map(ProcessHandle::isAlive).orElse(false);
     }
 
-    public record Details(String url, String token, long pid) {
+    public static final class Details {
+
+        private final String url;
+        private final String token;
+        private final long pid;
+
+        public Details(String url, String token, long pid) {
+            this.url = url;
+            this.token = token;
+            this.pid = pid;
+        }
+
+        public String url() {
+            return url;
+        }
+
+        public String token() {
+            return token;
+        }
+
+        public long pid() {
+            return pid;
+        }
 
         public boolean stale() {
             return !processAlive(pid);

@@ -24,6 +24,20 @@ public class BridgeJob {
         return state;
     }
 
+    /** The bridge reports an error as an object, not a string. */
+    static String reasonOf(JsonObject status) {
+        if (!status.has("error") || status.get("error").isJsonNull())
+            return "";
+        var error = status.get("error");
+        if (error.isJsonObject()) {
+            var described = error.getAsJsonObject();
+            if (described.has("message"))
+                return ": " + described.get("message").getAsString();
+            return ": " + described;
+        }
+        return ": " + error.getAsString();
+    }
+
     public static JsonObject await(BridgeClient client, String jobId, String what)
             throws Exception {
         while (true) {
@@ -36,10 +50,12 @@ public class BridgeJob {
                 return JsonParser.parseString(client.jobResult(jobId))
                         .getAsJsonObject().getAsJsonObject("result");
             }
-            if ("failed".equals(state) || "cancelled".equals(state)) {
+            // The bridge calls a failed job "error"; "failed" was never a state
+            // it reports, so waiting only on that spun here forever.
+            if ("error".equals(state) || "failed".equals(state)
+                    || "cancelled".equals(state)) {
                 IJ.showProgress(1.0);
-                throw new IllegalStateException(what + " " + state
-                        + (status.has("error") ? ": " + status.get("error").getAsString() : ""));
+                throw new IllegalStateException(what + " " + state + reasonOf(status));
             }
             if (IJ.escapePressed()) {
                 client.cancelJob(jobId);

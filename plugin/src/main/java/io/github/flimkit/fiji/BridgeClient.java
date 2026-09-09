@@ -11,7 +11,7 @@ import java.time.Duration;
 public class BridgeClient {
 
     public static final int PROTOCOL_VERSION = 1;
-    public static final String PLUGIN_VERSION = "0.3.1";
+    public static final String PLUGIN_VERSION = "0.4.0";
 
     private final HttpClient client = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
@@ -183,5 +183,71 @@ public class BridgeClient {
                 "GET pipeline defaults");
     }
 
-    public record Image(byte[] tiff, String unit) {}
+    public String zstackDefaults() throws IOException, InterruptedException {
+        return text(request("/v1/zstack/defaults").GET().build(),
+                "GET z-stack defaults");
+    }
+
+    public String zstackScan(String ptuDir) throws IOException, InterruptedException {
+        var body = "{\"ptu_dir\": " + com.google.gson.JsonParser.parseString(
+                new com.google.gson.Gson().toJson(ptuDir)) + "}";
+        return text(request("/v1/zstack/scan")
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8))
+                .build(), "POST z-stack scan");
+    }
+
+    public String zstack(String body) throws IOException, InterruptedException {
+        return text(request("/v1/zstack")
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8))
+                .build(), "POST z-stack");
+    }
+
+    /**
+     * Downloads one fitted stack as an OME-TIFF. Straight to a file: a stack
+     * is routinely larger than the heap Fiji was started with.
+     */
+    public java.nio.file.Path zstackVolume(String groupDir, String label,
+                                           double zStepUm, double pixelSizeUm)
+            throws IOException, InterruptedException {
+        String path = "/v1/zstack/volume.ome.tif?group_dir="
+                + java.net.URLEncoder.encode(groupDir, StandardCharsets.UTF_8)
+                + "&z_step_um=" + zStepUm;
+        if (label != null && !label.isBlank())
+            path += "&label=" + java.net.URLEncoder.encode(label, StandardCharsets.UTF_8);
+        if (pixelSizeUm > 0)
+            path += "&pixel_size_um=" + pixelSizeUm;
+        var file = java.nio.file.Files.createTempFile("flimkit-zstack-", ".ome.tif");
+        var response = client.send(
+                request(path).timeout(Duration.ofHours(1)).GET().build(),
+                HttpResponse.BodyHandlers.ofFile(file));
+        if (response.statusCode() != 200) {
+            String why = java.nio.file.Files.exists(file)
+                    ? java.nio.file.Files.readString(file) : "";
+            java.nio.file.Files.deleteIfExists(file);
+            throw new IOException("GET z-stack volume returned "
+                    + response.statusCode() + ": " + why);
+        }
+        return response.body();
+    }
+
+    public static final class Image {
+
+        private final byte[] tiff;
+        private final String unit;
+
+        public Image(byte[] tiff, String unit) {
+            this.tiff = tiff;
+            this.unit = unit;
+        }
+
+        public byte[] tiff() {
+            return tiff;
+        }
+
+        public String unit() {
+            return unit;
+        }
+    }
 }

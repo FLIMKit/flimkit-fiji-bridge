@@ -33,7 +33,7 @@ Fiji 2.16 or newer, with its bundled JDK 21.
 
 ## What it does
 
-Nine commands appear under `Plugins > FLIMKit`:
+Ten commands appear under `Plugins > FLIMKit`:
 
 | Command | Purpose |
 |---|---|
@@ -46,6 +46,7 @@ Nine commands appear under `Plugins > FLIMKit`:
 | Fit ROI decays... | Fit the decay summed over each ROI |
 | Phasor plot... | Open an interactive phasor window |
 | Stitch and fit a mosaic... | Stitch a multi-position acquisition and fit it |
+| Fit a z-stack... | Fit a folder of `region_zN.ptu` slices as one FOV |
 
 `File > Open` also handles the FLIM formats directly.
 
